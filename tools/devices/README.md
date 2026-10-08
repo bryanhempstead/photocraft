@@ -6,7 +6,8 @@ PhotoCraft is driven by **keystrokes** (device profiles), by **commands** over t
 (`~/Library/Application Support/Photocraft/keymap.json` on a Mac).
 
 The macOS app bundle id is **`ai.storyteller.photocraft`** (`packaging/macos/Info.plist.in`), so
-Logi Options+ / Loupedeck and other per-app device software can target PhotoCraft on its own.
+Logi Options+ / Loupedeck and other per-app device software can target PhotoCraft on its own. The
+brain app builds the bundle (`target/release/PhotoCraft.app`, src/crafts.js `ensureApp`).
 
 ## Logi MX Creative Console (Loupedeck70 keypad, 71 dialpad, 72 actions ring)
 
