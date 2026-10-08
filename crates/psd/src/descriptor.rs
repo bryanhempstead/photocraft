@@ -140,10 +140,21 @@ pub enum ReferenceItem {
         /// Offset.
         offset: i32,
     },
-    /// `Idnt`
-    Identifier(u32),
-    /// `indx`
-    Index(u32),
+    /// `Idnt`: class + identifier (Photoshop writes the class before the number, as for
+    /// `rele`; seen in recorded actions).
+    Identifier {
+        /// Class.
+        class: Class,
+        /// Identifier.
+        id: u32,
+    },
+    /// `indx`: class + index.
+    Index {
+        /// Class.
+        class: Class,
+        /// Index.
+        index: u32,
+    },
     /// `name`
     Name {
         /// Class.
@@ -272,6 +283,14 @@ impl Descriptor {
         let mut v = Vec::new();
         self.write(&mut v);
         v
+    }
+
+    /// Parses an unversioned descriptor at the start of `data` (as `.atn` action steps store
+    /// them), returning it and the number of bytes consumed.
+    pub fn parse_prefix(data: &[u8]) -> Result<(Self, usize)> {
+        let mut r = Reader::new(data);
+        let d = Self::read(&mut r)?;
+        Ok((d, r.pos()))
     }
 
     pub(crate) fn read(r: &mut Reader<'_>) -> Result<Self> {
@@ -436,8 +455,8 @@ fn read_reference_item(r: &mut Reader<'_>) -> Result<ReferenceItem> {
         b"Clss" => ReferenceItem::Class(Class::read(r)?),
         b"Enmr" => ReferenceItem::Enumerated { class: Class::read(r)?, type_id: Id::read(r)?, value: Id::read(r)? },
         b"rele" => ReferenceItem::Offset { class: Class::read(r)?, offset: r.i32()? },
-        b"Idnt" => ReferenceItem::Identifier(r.u32()?),
-        b"indx" => ReferenceItem::Index(r.u32()?),
+        b"Idnt" => ReferenceItem::Identifier { class: Class::read(r)?, id: r.u32()? },
+        b"indx" => ReferenceItem::Index { class: Class::read(r)?, index: r.u32()? },
         b"name" => ReferenceItem::Name { class: Class::read(r)?, name: UnicodeString::read(r)? },
         other => {
             return Err(PsdError::Unsupported(format!("reference item type {:?}", String::from_utf8_lossy(other))));
@@ -538,13 +557,15 @@ fn write_reference_item(it: &ReferenceItem, out: &mut Vec<u8>) {
             class.write(out);
             out.put_i32(*offset);
         }
-        ReferenceItem::Identifier(v) => {
+        ReferenceItem::Identifier { class, id } => {
             out.put(b"Idnt");
-            out.put_u32(*v);
+            class.write(out);
+            out.put_u32(*id);
         }
-        ReferenceItem::Index(v) => {
+        ReferenceItem::Index { class, index } => {
             out.put(b"indx");
-            out.put_u32(*v);
+            class.write(out);
+            out.put_u32(*index);
         }
         ReferenceItem::Name { class, name } => {
             out.put(b"name");
@@ -580,8 +601,8 @@ mod tests {
                     ReferenceItem::Class(class("", "Dcmn")),
                     ReferenceItem::Enumerated { class: class("", "Lyr "), type_id: Id::new("Ordn"), value: Id::new("Trgt") },
                     ReferenceItem::Offset { class: class("", "Lyr "), offset: -1 },
-                    ReferenceItem::Identifier(7),
-                    ReferenceItem::Index(2),
+                    ReferenceItem::Identifier { class: class("", "Lyr "), id: 7 },
+                    ReferenceItem::Index { class: class("", "Lyr "), index: 2 },
                     ReferenceItem::Name { class: class("", "Lyr "), name: UnicodeString::new("Bg") },
                 ]),
             )
@@ -731,8 +752,8 @@ pub(crate) mod proptests {
             arb_class().prop_map(ReferenceItem::Class),
             (arb_class(), arb_id(), arb_id()).prop_map(|(class, type_id, value)| ReferenceItem::Enumerated { class, type_id, value }),
             (arb_class(), any::<i32>()).prop_map(|(class, offset)| ReferenceItem::Offset { class, offset }),
-            any::<u32>().prop_map(ReferenceItem::Identifier),
-            any::<u32>().prop_map(ReferenceItem::Index),
+            (arb_class(), any::<u32>()).prop_map(|(class, id)| ReferenceItem::Identifier { class, id }),
+            (arb_class(), any::<u32>()).prop_map(|(class, index)| ReferenceItem::Index { class, index }),
             (arb_class(), arb_ustr()).prop_map(|(class, name)| ReferenceItem::Name { class, name }),
         ]
     }

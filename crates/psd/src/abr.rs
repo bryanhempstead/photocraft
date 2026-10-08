@@ -110,6 +110,9 @@ pub struct AbrFile {
     pub patterns: Vec<PsdPattern>,
     /// v6+ brush presets: the `brushPreset` objects of the `desc` section, in file order.
     pub presets: Vec<Descriptor>,
+    /// v6+ preset groups from the `phry` hierarchy: the group path of each entry of `presets`
+    /// in order (empty when the file has no hierarchy; an empty string is ungrouped).
+    pub groups: Vec<String>,
     /// Problems that did not stop the parse (skipped brushes, unknown sections…).
     pub warnings: Vec<String>,
 }
@@ -341,8 +344,10 @@ fn parse_v6(r: &mut Rd, out: &mut AbrFile) -> Result<()> {
                 Err(e) => out.warnings.push(format!("embedded patterns unreadable: {e}")),
             },
             b"desc" => read_desc(data, out),
-            // Preset hierarchy (groups) and tool presets: not needed for the tips.
-            b"phry" | b"lPdc" => {}
+            // Preset hierarchy: the group of each preset.
+            b"phry" => out.groups = crate::phry::groups(data),
+            // Tool presets: not needed for the tips.
+            b"lPdc" => {}
             k => out.warnings.push(format!("section {} ignored", String::from_utf8_lossy(k))),
         }
     }

@@ -30,6 +30,18 @@ pub struct AbrImport {
     pub version: u16,
 }
 
+/// Group-name placeholder for the preset's own group from the file's `phry` hierarchy.
+pub const HIERARCHY: &str = "{group}";
+/// The group used for presets the hierarchy leaves ungrouped.
+pub const HIERARCHY_FALLBACK: &str = "Brushes";
+
+/// Parse an `.abr` file (or Photoshop's `Brushes.psp`) keeping the groups its preset hierarchy
+/// defines (Photoshop 2020+ files); presets outside any group (and every preset of an older file)
+/// go to [`HIERARCHY_FALLBACK`].
+pub fn read_abr_grouped(bytes: &[u8], ctl: &photocraft_raster::Interrupt) -> Result<AbrImport, String> {
+    read_abr_with(bytes, HIERARCHY, ctl)
+}
+
 /// Parse an `.abr` file into presets in group `group` (usually the file name).
 pub fn read_abr(bytes: &[u8], group: &str) -> Result<AbrImport, String> {
     read_abr_with(bytes, group, &photocraft_raster::Interrupt::NONE)
@@ -84,7 +96,7 @@ pub fn map_file_with(f: &AbrFile, group: &str, ctl: &photocraft_raster::Interrup
                 }
             };
             let name = if b.name.trim().is_empty() { default_name } else { b.name.trim().to_string() };
-            out.presets.push(BrushPreset { name, brush, builtin: false, group: group.to_string() });
+            out.presets.push(BrushPreset { name, brush, builtin: false, group: group.replace(HIERARCHY, HIERARCHY_FALLBACK) });
         }
     } else if f.presets.is_empty() {
         // Tips without a settings section (early v6 files): one preset per tip.
@@ -92,14 +104,23 @@ pub fn map_file_with(f: &AbrFile, group: &str, ctl: &photocraft_raster::Interrup
             step(i)?;
             let (tip, size) = m.tip(s);
             let brush = BrushSettings { pressure_size: false, spacing: 0.25, size, tip, ..Default::default() };
-            out.presets.push(BrushPreset { name: format!("Sampled Brush {}", i + 1), brush, builtin: false, group: group.to_string() });
+            out.presets.push(BrushPreset {
+                name: format!("Sampled Brush {}", i + 1),
+                brush,
+                builtin: false,
+                group: group.replace(HIERARCHY, HIERARCHY_FALLBACK),
+            });
         }
     } else {
         for (i, d) in f.presets.iter().enumerate() {
             step(i)?;
             let name = text(d, "Nm  ").filter(|n| !n.trim().is_empty()).map(|n| n.trim().to_string()).unwrap_or_else(|| format!("Brush {}", i + 1));
+            // `{group}` in the group name stands for the preset's own group from the file's
+            // hierarchy (see [`read_abr_grouped`]).
+            let own = f.groups.get(i).map(String::as_str).filter(|g| !g.is_empty()).unwrap_or(HIERARCHY_FALLBACK);
+            let group = if group.contains(HIERARCHY) { group.replace(HIERARCHY, own) } else { group.to_string() };
             match m.preset(d) {
-                Some(brush) => out.presets.push(BrushPreset { name, brush, builtin: false, group: group.to_string() }),
+                Some(brush) => out.presets.push(BrushPreset { name, brush, builtin: false, group }),
                 None => {
                     m.warnings.insert(format!("\"{name}\": its sampled tip is missing from the file; skipped"));
                 }
