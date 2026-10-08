@@ -44,6 +44,7 @@ pub mod comps_ui;
 pub mod control;
 pub mod credits;
 pub mod crop_ui;
+pub mod device_cmds;
 pub mod dialogs;
 pub mod direct_select;
 pub mod discard_ui;

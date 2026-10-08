@@ -55,6 +55,7 @@ The transport is `apps/photocraft/src/control_server.rs`, and the handlers are i
   (default) because occluded macOS windows stop rendering
 - `ui.focus`: bring the main window to the front
 - `app.open {path}` / `app.save {path}`: relative file I/O through the configured automation roots (`app.open` reads under the read root, `app.save` writes under the write root; absolute paths, `..` and paths escaping the root are refused, and both fail closed when no root was granted). Both reply with `warnings` (import/export notes such as "adjustment layer flattened"; `[]` when none), also shown to the user in the status bar and as a notice (`notices` in `ui.inspect`); `app.open` also returns the `path` and document `name`, `app.save` the `path` written. `app.save` without `path` writes back only to the document's own PSD, PSB or `.pcraft` file, like File › Save. Automation opens and saves never fire script events. Use these two rather than `file.open`, `file.save`, `file.saveAs` or `file.saveACopy`, which the control channel refuses (see [Engine commands](#engine-commands))
+- `app.place {path, scale?, fit?, center?}`: File › Place Embedded through the automation read root (the path is relative to it, like `app.open`): the image becomes a Smart Object layer in the active document. `file.placeEmbedded {path}` is refused over the control channel; use this
 - `app.quit`
 
 ## Engine commands

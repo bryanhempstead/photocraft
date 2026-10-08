@@ -86,6 +86,7 @@ pub fn default_shortcut(id: &str) -> Option<String> {
         .or_else(|| photocraft_engine::commands::find(id).and_then(|c| c.shortcut))
         .or_else(|| crate::menu_catalog::CATALOG.iter().find(|c| c.3 == id).and_then(|c| c.2))
         .or_else(|| photocraft_engine::prefs::TEMPORARY_TOOLS.iter().find(|t| t.0 == id).map(|t| t.2))
+        .or_else(|| crate::device_cmds::default_shortcut(id))
         .map(str::to_string)
 }
 
@@ -227,6 +228,42 @@ pub fn clipboard_keys(ctx: &egui::Context, typing: bool, raw: &mut egui::RawInpu
     raw.events = out;
 }
 
+/// The single key that picks `t`: Edit › Keyboard Shortcuts' (or an imported Photoshop set's)
+/// override by tool name, else Photoshop's default.
+pub fn tool_key(app: &PhotocraftApp, t: Tool) -> Option<Key> {
+    match app.session.prefs().tool_keys.get(t.label()) {
+        Some(k) => Key::from_name(k.trim()),
+        None => Key::from_name(&t.key().to_string()),
+    }
+}
+
+/// The mouse buttons bindable to commands: (preference name, egui button).
+pub const MOUSE_BUTTONS: [(&str, egui::PointerButton); 2] = [("MouseBack", egui::PointerButton::Extra1), ("MouseForward", egui::PointerButton::Extra2)];
+
+/// Run the commands bound to this frame's side-button presses. True when one ran.
+fn mouse_buttons(app: &mut PhotocraftApp, ctx: &egui::Context) -> bool {
+    if app.session.prefs().mouse_buttons.is_empty() {
+        return false;
+    }
+    let pressed: Vec<&str> = ctx.input(|i| {
+        i.events
+            .iter()
+            .filter_map(|e| match e {
+                egui::Event::PointerButton { button, pressed: true, .. } => MOUSE_BUTTONS.iter().find(|m| m.1 == *button).map(|m| m.0),
+                _ => None,
+            })
+            .collect()
+    });
+    let mut ran = false;
+    for b in pressed {
+        if let Some(id) = app.session.prefs().mouse_buttons.get(b).filter(|id| !id.is_empty()).cloned() {
+            crate::shortcut_dispatch::dispatch(app, ctx, &id);
+            ran = true;
+        }
+    }
+    ran
+}
+
 pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context) {
     // Camera Raw is modal like Photoshop's filter dialog: no application shortcut (Save, Undo,
     // tools) runs beneath it, and it handles its own keys (Y, U, O, S). Unlike the other dialogs
@@ -305,6 +342,10 @@ pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context) {
             return;
         }
     }
+    // Mouse side buttons bound in Edit › Keyboard Shortcuts (MX Master back / forward).
+    if mouse_buttons(app, ctx) {
+        return;
+    }
     // Inline type editing eats text and navigation keys; ⌘-shortcuts still reach the menus.
     let editing = crate::type_tool::handle_keys(app, ctx);
     // Registry, UI and menu-catalogue shortcuts (see [`crate::shortcut_dispatch::bindings`]).
@@ -351,11 +392,12 @@ pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context) {
     // Tools › Use Shift Key for Tool Switch, only ⇧+key cycles and the plain key keeps the
     // group's current tool.
     let shift_switch = app.session.prefs().tools.use_shift_key_for_tool_switch;
-    for t in Tool::ALL {
-        let Some(k) = Key::from_name(&t.key().to_string()) else { continue };
+    let keys: Vec<(Tool, Option<Key>)> = Tool::ALL.iter().map(|t| (*t, tool_key(app, *t))).collect();
+    for &(_, k) in &keys {
+        let Some(k) = k else { continue };
         let cycle_shift = shift_switch && ctx.input_mut(|i| i.consume_key(Modifiers::SHIFT, k));
         if cycle_shift || pressed(k) {
-            let group: Vec<Tool> = Tool::ALL.iter().copied().filter(|x| x.key() == t.key()).collect();
+            let group: Vec<Tool> = keys.iter().filter(|(_, x)| *x == Some(k)).map(|(x, _)| *x).collect();
             app.ui.tool = match group.iter().position(|x| *x == app.ui.tool) {
                 Some(i) if shift_switch && !cycle_shift => group[i],
                 Some(i) => group[(i + 1) % group.len()],

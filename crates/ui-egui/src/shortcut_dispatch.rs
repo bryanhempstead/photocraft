@@ -73,8 +73,16 @@ pub fn bindings(app: &PhotocraftApp) -> Vec<(String, KeyboardShortcut)> {
         .map(|(id, sc)| (id.as_str(), Some(sc.as_str())));
     // Photoshop's second shortcuts, kept while the command's main one is the default.
     let secondary = SECONDARY.iter().filter(|(id, _)| !prefs.shortcuts.contains_key(*id)).map(|&(id, sc)| (id, Some(sc)));
+    // Device commands (tool picks, opacity / blend steps) and the keys device profiles use for
+    // menu items Photoshop leaves without one.
+    let device_cmds = crate::device_cmds::commands();
+    let device = device_cmds.iter().map(|(id, _, d)| (*id, prefs.shortcut(id, *d)));
+    let menu_keys =
+        crate::device_cmds::MENU_KEYS.iter().filter(|(id, _)| !own.contains(id) && crate::menus::is_live(id)).map(|&(id, k)| (id, prefs.shortcut(id, Some(k))));
+    // Further shortcuts per command (Photoshop's Copy = ⌘C and F3), imported or set by the user.
+    let extra = prefs.extra_shortcuts.iter().flat_map(|(id, ks)| ks.iter().map(move |k| (id.as_str(), Some(k.as_str()))));
     let mut all: Vec<(String, KeyboardShortcut)> = Vec::new();
-    for (id, sc) in ui.chain(engine).chain(catalog).chain(overrides).chain(secondary) {
+    for (id, sc) in ui.chain(engine).chain(catalog).chain(device).chain(menu_keys).chain(overrides).chain(secondary).chain(extra) {
         let Some(sc) = sc.and_then(parse) else { continue };
         if !all.iter().any(|(_, b)| *b == sc) {
             all.push((id.to_string(), sc));

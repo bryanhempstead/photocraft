@@ -54,6 +54,42 @@ pub fn prefs_file() -> Option<PathBuf> {
     config_dir().map(|d| d.join("preferences.json"))
 }
 
+/// The user keymap (`keymap.json`, see `photocraft_engine::prefs::keymap_of`): shortcuts, extra
+/// shortcuts, mouse buttons and tool keys, kept beside the preferences and applied over them.
+pub fn keymap_file() -> Option<PathBuf> {
+    config_dir().map(|d| d.join("keymap.json"))
+}
+
+/// The preferences text with `keymap.json` laid over it. A damaged keymap is ignored (and left
+/// on disk until the next save rewrites it), so it can never stop the preferences from loading.
+pub fn load_prefs_with_keymap(prefs: Option<String>, keymap: Option<String>) -> Option<String> {
+    let km = keymap.and_then(|k| serde_json::from_str::<serde_json::Value>(&k).ok()).filter(|k| k.is_object());
+    let Some(km) = km else { return prefs };
+    let mut v = match prefs.as_deref().map(serde_json::from_str::<serde_json::Value>) {
+        None => serde_json::json!({}),
+        Some(Ok(v)) if v.is_object() => v,
+        // Unreadable preferences: let the app report them as it always has.
+        Some(_) => return prefs,
+    };
+    photocraft_engine::prefs::merge_keymap(&mut v, &km);
+    Some(v.to_string())
+}
+
+/// Save the preferences and their keymap file.
+fn save_prefs_and_keymap(text: &str) -> Result<(), String> {
+    write_atomic(&prefs_file().ok_or("no config directory")?, text.as_bytes())?;
+    if let (Some(path), Ok(v)) = (keymap_file(), serde_json::from_str::<serde_json::Value>(text)) {
+        let km = photocraft_engine::prefs::keymap_of(&v);
+        let body = serde_json::to_string_pretty(&km).map_err(|e| e.to_string())?;
+        // Rewrite only when it changed, so hand edits made while the app runs aren't clobbered
+        // by unrelated preference saves.
+        if std::fs::read_to_string(&path).ok().as_deref() != Some(body.as_str()) {
+            write_atomic(&path, body.as_bytes())?;
+        }
+    }
+    Ok(())
+}
+
 /// The brush preset store (one file per preset group plus tip bitmaps; see
 /// `photocraft_engine::preset_store`).
 pub fn presets_dir() -> Option<PathBuf> {
@@ -226,8 +262,10 @@ pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) ->
                 Some((img.width as u32, img.height as u32, img.bytes.into_owned()))
             })
         }),
-        load_prefs: Some(Box::new(|| std::fs::read_to_string(prefs_file()?).ok())),
-        save_prefs: Some(Box::new(|text: &str| write_atomic(&prefs_file().ok_or("no config directory")?, text.as_bytes()))),
+        load_prefs: Some(Box::new(|| {
+            load_prefs_with_keymap(prefs_file().and_then(|p| std::fs::read_to_string(p).ok()), keymap_file().and_then(|p| std::fs::read_to_string(p).ok()))
+        })),
+        save_prefs: Some(Box::new(save_prefs_and_keymap)),
         append_text: Some(Box::new(|path: &str, text: &str| {
             use std::io::Write;
             let mut f = std::fs::OpenOptions::new().create(true).append(true).open(path).map_err(|e| e.to_string())?;
@@ -311,6 +349,20 @@ mod tests {
     use photocraft_format::list_recovery;
     use photocraft_ui_egui::{PhotocraftApp, prefs_ui};
     use serde_json::json;
+
+    #[test]
+    fn keymap_file_overrides_preferences_and_junk_is_ignored() {
+        let prefs = r#"{"shortcuts":{"edit.cut":"Cmd+X"},"interface":{"uiScale":"100"}}"#.to_string();
+        let km = r#"{"version":1,"shortcuts":{"edit.cut":"F2"},"extraShortcuts":{"edit.copy":["F3"]}}"#.to_string();
+        let merged: serde_json::Value = serde_json::from_str(&load_prefs_with_keymap(Some(prefs.clone()), Some(km.clone())).unwrap()).unwrap();
+        assert_eq!(merged["shortcuts"]["edit.cut"], "F2");
+        assert_eq!(merged["extraShortcuts"]["edit.copy"][0], "F3");
+        assert_eq!(merged["interface"]["uiScale"], "100");
+        assert_eq!(load_prefs_with_keymap(Some(prefs.clone()), Some("{broken".into())), Some(prefs.clone()));
+        assert_eq!(load_prefs_with_keymap(None, None), None);
+        assert!(load_prefs_with_keymap(None, Some(km)).unwrap().contains("F2"), "a keymap alone still applies");
+        assert_eq!(load_prefs_with_keymap(Some("garbage".into()), Some("{}".into())).as_deref(), Some("garbage"));
+    }
 
     /// "Export As" formats must lead with their own filter, or the save panel appends the first one's extension (`photo.webp.psd`).
     #[test]

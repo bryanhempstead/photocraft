@@ -1278,19 +1278,42 @@ const SWATCHES: [[u8; 3]; 40] = [
 
 fn swatches(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    swatch_grid(app, ui, "sw", &SWATCHES.iter().map(|c| (*c, String::new())).collect::<Vec<_>>());
+    // The user's swatch groups (added by hand or imported from Photoshop) after the built-ins.
+    let groups: Vec<(String, Vec<NamedChip>)> =
+        app.session.presets.swatches.iter().map(|g| (g.name.clone(), g.items.iter().map(|w| (w.rgb, w.name.clone())).collect())).collect();
+    for (name, items) in groups {
+        ui.add_space(6.0);
+        ui.label(RichText::new(&name).small().color(t.text_dim));
+        ui.add_space(2.0);
+        swatch_grid(app, ui, &format!("sw-{name}"), &items);
+    }
+    ui.add_space(2.0);
+    ui.label(RichText::new(tl!("Click sets foreground · right-click sets background")).small().color(t.text_faint));
+}
+
+/// A swatch chip: colour and name (empty for the built-in palette).
+type NamedChip = ([u8; 3], String);
+
+/// A grid of swatch chips; a named chip shows its name on hover.
+fn swatch_grid(app: &mut PhotocraftApp, ui: &mut egui::Ui, salt: &str, colors: &[([u8; 3], String)]) {
+    let t = Tokens::get(ui.ctx());
     let cols = 10;
     let gap = 4.0;
     let w = ui.available_width();
     let cell = ((w - gap * (cols as f32 - 1.0)) / cols as f32).floor();
-    let rows = SWATCHES.len().div_ceil(cols);
+    let rows = colors.len().div_ceil(cols);
     let (area, _) = ui.allocate_exact_size(vec2(w, rows as f32 * (cell + gap)), Sense::hover());
-    for (i, s) in SWATCHES.iter().enumerate() {
+    for (i, (s, name)) in colors.iter().enumerate() {
         let (cx, cy) = ((i % cols) as f32, (i / cols) as f32);
         let r = Rect::from_min_size(area.min + vec2(cx * (cell + gap), cy * (cell + gap)), Vec2::splat(cell));
-        let resp = ui.interact(r, ui.id().with(("sw", i)), Sense::click());
+        let mut resp = ui.interact(r, ui.id().with((salt, i)), Sense::click());
         ui.painter().rect_filled(r, 4.0, Color32::from_rgb(s[0], s[1], s[2]));
         if resp.hovered() {
             ui.painter().rect_stroke(r, 4.0, Stroke::new(1.5, t.text), StrokeKind::Outside);
+        }
+        if !name.is_empty() {
+            resp = resp.on_hover_text(name);
         }
         let c = [s[0] as f32 / 255.0, s[1] as f32 / 255.0, s[2] as f32 / 255.0, 1.0];
         if resp.clicked() {
@@ -1301,8 +1324,6 @@ fn swatches(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             app.session.tools.background = c;
         }
     }
-    ui.add_space(2.0);
-    ui.label(RichText::new(tl!("Click sets foreground · right-click sets background")).small().color(t.text_faint));
 }
 
 fn color_picker(app: &mut PhotocraftApp, ui: &mut egui::Ui) {

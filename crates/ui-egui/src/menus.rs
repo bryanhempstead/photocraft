@@ -149,6 +149,14 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
     if let Some(r) = crate::plugin_ui::menu(app, id, &params) {
         return r;
     }
+    // File › Migrate from Photoshop… finds the newest Photoshop settings folder by itself.
+    if id == "file.migrateFromPhotoshop" && params.as_object().is_none_or(|o| o.is_empty()) {
+        return app.run(id, json!({"auto": true}));
+    }
+    // Device commands: direct tool picks, opacity / blend mode steps.
+    if let Some(r) = crate::device_cmds::menu(app, id, &params) {
+        return r;
+    }
     if id == "window.panel.brushes" {
         // Window › Brushes opens the Brush Settings window on its presets tab.
         app.ui.panels.brush_settings = true;
@@ -470,7 +478,7 @@ pub fn is_enabled(app: &PhotocraftApp, id: &str) -> bool {
     if let Some(e) = crate::workspace_ui::is_enabled(app, id) {
         return e;
     }
-    if crate::analysis_ui::handles(id) {
+    if crate::analysis_ui::handles(id) || crate::device_cmds::handles(id) {
         return true;
     }
     if crate::preset_panels::handles(id) || crate::type_panels_ui::handles(id) || crate::timeline_ui::handles(id) {
@@ -643,6 +651,7 @@ pub fn is_live(id: &str) -> bool {
         || crate::preset_panels::handles(id)
         || crate::type_panels_ui::handles(id)
         || crate::timeline_ui::handles(id)
+        || crate::device_cmds::handles(id)
 }
 
 /// Commands outside the catalogue that belong right after a catalogue item: `(id, after)`.

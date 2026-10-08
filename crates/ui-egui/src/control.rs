@@ -584,6 +584,23 @@ fn dispatch(app: &mut PhotocraftApp, ctx: &egui::Context, req: &ControlRequest) 
             }
             None => err("missing `path`"),
         },
+        // File › Place Embedded through the automation read root (`file.placeEmbedded {path}` is
+        // refused here, like every ambient-path command): the image becomes a Smart Object layer
+        // in the active document. `scale`, `fit` and `center` are passed through.
+        "app.place" => match s("path") {
+            Some(path) => {
+                let read = match app.services.automation_read.as_mut() {
+                    Some(read) => read(path),
+                    None => Err("automation read authority is not configured".into()),
+                };
+                wrap(read.and_then(|(name, bytes)| {
+                    let r = photocraft_engine::file_cmds::place_bytes(&mut app.session, &name, bytes, None, p).map_err(|e| e.to_string())?;
+                    app.sync_views();
+                    Ok(r)
+                }))
+            }
+            None => err("missing `path`"),
+        },
         "app.save" => wrap(app.save_automation(s("path").map(str::to_string)).map(|(p, w)| json!({"path": p, "warnings": w}))),
         "app.quit" => {
             app.allow_close = true;
@@ -966,6 +983,34 @@ mod tests {
         assert!(r["error"].as_str().unwrap().contains("pass `path`"), "{r}");
     }
 
+    /// Shotboard's "psin": place a file into the open document as a Smart Object through the
+    /// read root; "hlpr" reads the document path from `ui.inspect`.
+    #[test]
+    fn automation_place_embeds_through_the_read_root() {
+        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+        let ctx = egui::Context::default();
+        let r = call(&mut app, &ctx, "app.place", json!({"path": "shot.png"}));
+        assert!(r.to_string().contains("automation read authority is not configured"), "{r}");
+        let img = photocraft_codecs::Image::from_u8(4, 2, photocraft_codecs::ChannelLayout::Rgba, vec![200; 32]).unwrap();
+        let png = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap();
+        let services = crate::Services { automation_read: Some(Box::new(move |path: &str| Ok((path.to_string(), png.clone())))), ..Default::default() };
+        let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), services);
+        let r = call(&mut app, &ctx, "app.place", json!({"path": "shot.png"}));
+        assert_eq!(r["ok"], false, "no document: {r}");
+        app.run("file.new", json!({"width": 16, "height": 16})).unwrap();
+        let r = call(&mut app, &ctx, "app.place", json!({"path": "shot.png"}));
+        assert_eq!(r["ok"], true, "{r}");
+        let st = app.session.active().unwrap();
+        let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
+        assert!(matches!(l.content, photocraft_doc::LayerContent::Smart(_)));
+        assert_eq!(l.name, "shot");
+        assert_eq!(call(&mut app, &ctx, "app.place", json!({}))["ok"], false);
+        let inspected = call(&mut app, &ctx, "ui.inspect", json!({}));
+        let session = &inspected["result"]["session"];
+        let active = session["active"].as_u64().unwrap() as usize;
+        assert!(session["documents"][active].get("path").is_some(), "ui.inspect reports the document path: {session}");
+    }
+
     fn deny_ambient_file(id: &str, _: &serde_json::Value) -> photocraft_engine::Result<()> {
         if id.starts_with("file.") && id != "file.new" {
             Err(photocraft_engine::EngineError::Other(format!("automation command `{id}` is disabled")))
@@ -981,6 +1026,7 @@ mod tests {
         app.session.actions.list.push(photocraft_engine::actions_cmds::Action {
             name: "Open".into(),
             steps: vec![("file.open".into(), json!({"path": "/etc/passwd"})), ("layer.new.layer".into(), json!({}))],
+            ..Default::default()
         });
         let ctx = egui::Context::default();
         let r = call(&mut app, &ctx, "engine.execute", json!({"command": "actions.play", "params": {"action": "Open"}}));
@@ -999,6 +1045,7 @@ mod tests {
         app.session.actions.list.push(photocraft_engine::actions_cmds::Action {
             name: "Open".into(),
             steps: vec![("file.open".into(), json!({"path": "/etc/passwd"})), ("layer.new.layer".into(), json!({}))],
+            ..Default::default()
         });
         app.automation_input = true;
         let r = app.run("actions.play", json!({"action": "Open"})).unwrap();

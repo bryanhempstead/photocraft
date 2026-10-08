@@ -478,6 +478,12 @@ pub fn shortcut_items(app: &PhotocraftApp) -> Vec<(String, String, Vec<String>, 
             }
         }
     }
+    // Device commands: direct tool picks, opacity and blend mode steps (Logitech MX Creative Console and other keystroke devices).
+    for (id, label, def) in crate::device_cmds::commands() {
+        if seen.insert(id.to_string()) {
+            tools.push((id.to_string(), label, vec!["Tools".to_string()], def.map(str::to_string)));
+        }
+    }
     let at = out.iter().rposition(|i| i.2.first().map(String::as_str) == Some("Layer")).map_or(out.len(), |i| i + 1);
     out.splice(at..at, layer);
     out.extend(tools);
@@ -707,6 +713,7 @@ pub fn open_shortcuts(app: &mut PhotocraftApp, tab: u64) -> u64 {
         "hidden": p.menus.hidden,
         "colors": p.menus.colors,
         "toolbarHidden": p.toolbar.hidden,
+        "mouse": p.mouse_buttons,
         "selected": "",
         "capture": false,
         "message": "",
@@ -746,6 +753,10 @@ pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Valu
         "prefs" => {
             f.insert("__gpuInfo".into(), json!(app.perf.gpu_info.lines()));
             prefs_body(ui, f);
+            // The shrt. entry opens the shortcut editor (keys, mouse buttons, Photoshop import).
+            if f.remove("__openShortcuts").is_some() {
+                open_shortcuts(app, 0);
+            }
         }
         "shortcuts" => shortcuts_body(app, ui, f),
         "presets" => presets_body(app, ui, f),
@@ -849,6 +860,16 @@ fn prefs_body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
                 if resp.clicked() {
                     section = id.to_string();
                 }
+            }
+            // Keyboard shortcuts live in their own editor; this opens it.
+            ui.add_space(6.0);
+            let (rect, resp) = ui.allocate_exact_size(vec2(170.0, 22.0), Sense::click());
+            if resp.hovered() {
+                ui.painter().rect_filled(rect, t.radius_sm, t.hover);
+            }
+            ui.painter().text(rect.left_center() + vec2(8.0, 0.0), egui::Align2::LEFT_CENTER, "shrt.", crate::theme::medium(12.5), t.text_dim);
+            if resp.on_hover_text(tl!("Keyboard shortcuts, mouse buttons, import from Photoshop")).clicked() {
+                f.insert("__openShortcuts".into(), json!(true));
             }
         });
         crate::widgets::vline(ui, 420.0);
@@ -1209,7 +1230,11 @@ fn shortcuts_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String
                 overrides.clear();
                 message = tl!("All shortcuts reset to Photoshop defaults.").into();
             }
+            if ui.button("import.").on_hover_text(tl!("Import a Photoshop keyboard shortcuts file (.kys or Keyboard Shortcuts.psp)")).clicked() {
+                message = import_kys(app, &mut overrides);
+            }
         });
+        mouse_rows(ui, f);
     } else if ui.button(tl!("Show All Menu Items")).clicked() {
         hidden.clear();
         colors.clear();
@@ -1223,6 +1248,54 @@ fn shortcuts_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String
     f.insert("selected".into(), json!(selected));
     f.insert("capture".into(), json!(capture));
     f.insert("message".into(), json!(message));
+}
+
+/// Import a Photoshop shortcut file picked by the user: applies it at once (like Photoshop's
+/// Load) and refreshes the dialog's pending overrides from the result. Returns the message.
+fn import_kys(app: &mut PhotocraftApp, overrides: &mut BTreeMap<String, String>) -> String {
+    let (name, bytes) = match app.pick_file_bytes() {
+        Some(Ok(f)) => f,
+        Some(Err(e)) => return e,
+        None => return String::new(),
+    };
+    // Keep the edits made in the dialog so far, then lay the file over them.
+    let _ = app.run("edit.keyboardShortcuts", json!({"reset": true, "set": overrides.clone(), "allowUnknown": true, "removeConflicts": false}));
+    match app.run("edit.keyboardShortcuts.importKys", json!({"text": String::from_utf8_lossy(&bytes)})) {
+        Ok(r) => {
+            *overrides = app.session.prefs().shortcuts.clone();
+            let n = |k: &str| r.get(k).and_then(Value::as_array).map_or(0, Vec::len);
+            format!(
+                "{}: {} changed, {} unbound, {} without a PhotoCraft command.",
+                crate::file_open::display_name(&name),
+                n("changed"),
+                n("unbound"),
+                n("unmapped") + n("unmappedTools")
+            )
+        }
+        Err(e) => e,
+    }
+}
+
+/// Mouse side buttons → command ids (`mouseButtons`), edited in place.
+fn mouse_rows(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
+    let t = Tokens::get(ui.ctx());
+    let mut mouse: BTreeMap<String, String> = f.get("mouse").and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default();
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("mouse.").color(t.text_dim));
+        for (button, label) in [("MouseBack", "back."), ("MouseForward", "fwd.")] {
+            ui.add_space(8.0);
+            ui.label(RichText::new(label).color(t.text_faint));
+            let mut id = mouse.get(button).cloned().unwrap_or_default();
+            ui.add(egui::TextEdit::singleline(&mut id).desired_width(170.0).hint_text(tl!("command id, e.g. edit.undo")));
+            if id.trim().is_empty() {
+                mouse.remove(button);
+            } else {
+                mouse.insert(button.to_string(), id.trim().to_string());
+            }
+        }
+    });
+    f.insert("mouse".into(), json!(mouse));
 }
 
 fn toolbar_tab(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
@@ -1368,6 +1441,9 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
             let colors = f.get("colors").cloned().unwrap_or(json!({}));
             let toolbar = f.get("toolbarHidden").cloned().unwrap_or(json!([]));
             app.run("edit.keyboardShortcuts", json!({"reset": true, "set": ov, "allowUnknown": true, "removeConflicts": false}))?;
+            if let Some(mouse) = f.get("mouse").and_then(|v| serde_json::from_value::<BTreeMap<String, String>>(v.clone()).ok()) {
+                app.session.edit_prefs(|p| p.mouse_buttons = mouse);
+            }
             app.run("prefs.set", json!({"values": {"menus": {"hidden": hidden, "colors": colors}, "toolbar": {"hidden": toolbar}}}))
         }
         "presets" => Ok(Value::Null),
