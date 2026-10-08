@@ -30,6 +30,13 @@ USAGE:
       --in folder is refused, as the results would replace the originals; --in-place allows it.
   photocraft-cli droplet <file.pcdroplet> <file-or-dir>… [--out <dir>]
       Run a droplet (File › Automate › Create Droplet) on images and folders.
+  photocraft-cli migrate-photoshop [--from <Photoshop settings dir>] [--config-dir <PhotoCraft settings dir>]
+      [--only shortcuts,actions,brushes,patterns,swatches,guides] [--include-stock] [--dry-run]
+      Import Photoshop's keyboard shortcuts, actions, brushes, patterns, swatches and guide layouts
+      (read only) into PhotoCraft's settings: preferences.json, keymap.json and Presets/ in
+      --config-dir (default: PHOTOCRAFT_CONFIG_DIR, else the platform settings folder). --from
+      defaults to the newest ~/Library/Preferences/Adobe Photoshop 20xx Settings. Prints a report.
+      Quit PhotoCraft first: a running app saves its own preferences over the new ones.
   photocraft-cli commands [--json] [--filter <text>]
       List the engine command registry.
   photocraft-cli mcp [--bridge <127.0.0.1:port>] [--control-token <64-hex> | --control-token-file <path>]
@@ -67,6 +74,12 @@ const SUBCOMMANDS: &[Subcommand] = &[
     Subcommand { name: "batch", values: &["--actions", "--in", "--out", "--format", "--quality"], bare: &["--in-place", "--tiff-layers"], run: batch },
     Subcommand { name: "droplet", values: &["--out"], bare: &[], run: droplet },
     Subcommand { name: "commands", values: &["--filter"], bare: &["--json"], run: |a, out, _| commands(a, out) },
+    Subcommand {
+        name: "migrate-photoshop",
+        values: &["--from", "--config-dir", "--only"],
+        bare: &["--include-stock", "--dry-run"],
+        run: |a, out, _| migrate_photoshop(a, out),
+    },
     Subcommand {
         name: "mcp",
         values: &["--bridge", "--control-token", "--control-token-file", "--automation-read-root", "--automation-write-root"],
@@ -366,6 +379,64 @@ fn droplet(a: &Args, out: &mut dyn Write, err: &mut dyn Write) -> R {
         let _ = writeln!(err, "FAIL  {}: {}", e["file"].as_str().unwrap_or_default(), e["error"].as_str().unwrap_or_default());
     }
     if errors.is_empty() { Ok(()) } else { Err(format!("{} file(s) failed", errors.len())) }
+}
+
+/// PhotoCraft's settings folder when `--config-dir` isn't given: `PHOTOCRAFT_CONFIG_DIR`, else
+/// the platform convention (as the desktop app resolves it, minus portable mode).
+fn default_config_dir() -> Option<PathBuf> {
+    if let Some(d) = std::env::var_os("PHOTOCRAFT_CONFIG_DIR").filter(|d| !d.is_empty()) {
+        return Some(PathBuf::from(d));
+    }
+    let home = std::env::var_os("HOME").filter(|h| !h.is_empty()).map(PathBuf::from);
+    if cfg!(target_os = "macos") {
+        return home.map(|h| h.join("Library/Application Support/Photocraft"));
+    }
+    if cfg!(windows) {
+        return std::env::var_os("APPDATA").filter(|a| !a.is_empty()).map(|a| PathBuf::from(a).join("Photocraft"));
+    }
+    std::env::var_os("XDG_CONFIG_HOME").filter(|x| !x.is_empty()).map(PathBuf::from).or_else(|| home.map(|h| h.join(".config"))).map(|c| c.join("photocraft"))
+}
+
+/// File › Migrate from Photoshop… headless: load the settings folder's preferences (with its
+/// keymap) and preset store, run the migration, save both back.
+fn migrate_photoshop(a: &Args, out: &mut dyn Write) -> R {
+    let dir = a.get("--config-dir").map(PathBuf::from).or_else(default_config_dir).ok_or("no PhotoCraft settings folder; pass --config-dir")?;
+    let dry = a.has("--dry-run");
+    let prefs_path = dir.join("preferences.json");
+    let keymap_path = dir.join("keymap.json");
+    let mut s = photocraft_engine::Session::new();
+    let prefs_text = std::fs::read_to_string(&prefs_path).ok();
+    let mut prefs: Value = match &prefs_text {
+        Some(t) => serde_json::from_str(t).map_err(|e| format!("{}: {e}", prefs_path.display()))?,
+        None => json!({}),
+    };
+    if let Some(km) = std::fs::read_to_string(&keymap_path).ok().and_then(|k| serde_json::from_str::<Value>(&k).ok()) {
+        photocraft_engine::prefs::merge_keymap(&mut prefs, &km);
+    }
+    s.load_prefs_json(&prefs.to_string())?;
+    if !dry {
+        for w in s.attach_preset_store(photocraft_engine::preset_store::open_dir(dir.join("Presets"))) {
+            writeln!(out, "warning: {w}").map_err(|e| e.to_string())?;
+        }
+    }
+    let mut p = json!({"dryRun": dry, "includeStock": a.has("--include-stock"), "auto": true});
+    if let Some(from) = a.get("--from") {
+        p["settingsDir"] = json!(from);
+    }
+    if let Some(only) = a.get("--only") {
+        p["only"] = json!(only.split(',').map(str::trim).filter(|k| !k.is_empty()).collect::<Vec<_>>());
+    }
+    let report = s.execute("file.migrateFromPhotoshop", p).map_err(|e| e.to_string())?;
+    if !dry {
+        std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        s.sync_preset_store();
+        let text = s.prefs_to_json();
+        photocraft_format::atomic_write(&prefs_path, text.as_bytes()).map_err(|e| format!("{}: {e}", prefs_path.display()))?;
+        let v: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        let km = serde_json::to_string_pretty(&photocraft_engine::prefs::keymap_of(&v)).map_err(|e| e.to_string())?;
+        photocraft_format::atomic_write(&keymap_path, km.as_bytes()).map_err(|e| format!("{}: {e}", keymap_path.display()))?;
+    }
+    print_json(out, &json!({"configDir": dir.display().to_string(), "report": report}), false)
 }
 
 fn commands(a: &Args, out: &mut dyn Write) -> R {

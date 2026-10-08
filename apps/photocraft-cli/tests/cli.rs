@@ -546,3 +546,42 @@ fn tiff_output_is_flat_unless_tiff_layers_is_given() {
     assert_eq!(layer_count(&kept), 2);
     std::fs::remove_dir_all(d).unwrap();
 }
+
+/// `migrate-photoshop` reads a Photoshop settings folder and writes PhotoCraft's preferences,
+/// keymap and preset store into the given (throwaway) settings folder; a dry run writes nothing.
+#[test]
+fn migrate_photoshop_writes_only_the_given_settings_folder() {
+    let ps = tmp("ps-settings");
+    let cfg = tmp("pc-settings");
+    let kys = "<photoshop-keyboard-shortcuts version=\"4\">\
+        <command kind=\"static\" id=\"3444\" name=\"Quick Export as JPG\"><shortcut>Cmd+E</shortcut></command>\
+        <command kind=\"static\" id=\"103\" name=\"Cut\"><shortcut>F2</shortcut></command>\
+        </photoshop-keyboard-shortcuts>";
+    std::fs::write(ps.join("Keyboard Shortcuts.psp"), kys).unwrap();
+    // One named RGB swatch (ACO v1 + v2).
+    let mut aco = vec![0, 1, 0, 1, 0, 0, 0x3d, 0x3d, 0x46, 0x46, 0x33, 0x33, 0, 0, 0, 2, 0, 1, 0, 0, 0x3d, 0x3d, 0x46, 0x46, 0x33, 0x33, 0, 0, 0, 0, 0, 6];
+    for c in "bwald\0".encode_utf16() {
+        aco.extend_from_slice(&c.to_be_bytes());
+    }
+    std::fs::write(ps.join("Swatches.psp"), aco).unwrap();
+    let from = ps.to_string_lossy().to_string();
+    let dir = cfg.to_string_lossy().to_string();
+    let only = "shortcuts,swatches";
+    let (out, _) = ok(bin().args(["migrate-photoshop", "--from", &from, "--config-dir", &dir, "--only", only, "--dry-run"]));
+    let r: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(r["report"]["swatches"]["count"], 1, "{r}");
+    assert!(!cfg.join("preferences.json").exists(), "a dry run writes nothing");
+    let (out, _) = ok(bin().args(["migrate-photoshop", "--from", &from, "--config-dir", &dir, "--only", only]));
+    let r: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(r["report"]["errors"], json!([]), "{r}");
+    let prefs: Value = serde_json::from_str(&std::fs::read_to_string(cfg.join("preferences.json")).unwrap()).unwrap();
+    assert_eq!(prefs["shortcuts"]["file.export.quickExportAsPng"], "Cmd+E");
+    assert_eq!(prefs["presets"]["swatches"][0]["items"][0]["name"], "bwald");
+    let km: Value = serde_json::from_str(&std::fs::read_to_string(cfg.join("keymap.json")).unwrap()).unwrap();
+    assert_eq!(km["shortcuts"]["edit.cut"], "F2");
+    // Bad input is an error, not a crash.
+    let o = bin().args(["migrate-photoshop", "--from", "/no/such/dir", "--config-dir", &dir]).output().unwrap();
+    assert_eq!(o.status.code(), Some(1));
+    let _ = std::fs::remove_dir_all(&ps);
+    let _ = std::fs::remove_dir_all(&cfg);
+}

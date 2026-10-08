@@ -749,6 +749,15 @@ pub struct Preferences {
     /// Edit › Keyboard Shortcuts: command id → shortcut (`Cmd+Shift+N` notation); an empty
     /// string removes the default shortcut.
     pub shortcuts: BTreeMap<String, String>,
+    /// Second (third…) shortcuts of a command besides its main one, as Photoshop allows (Copy is
+    /// ⌘C and F3): command id → shortcuts. Imported from Photoshop keyboard shortcut files.
+    pub extra_shortcuts: BTreeMap<String, Vec<String>>,
+    /// Mouse buttons bound to commands: `MouseBack` / `MouseForward` (the side buttons of an MX
+    /// Master and similar mice) → command id. Empty by default.
+    pub mouse_buttons: BTreeMap<String, String>,
+    /// Single-key tool shortcuts that differ from Photoshop's: tool name (`Brush Tool`) → key
+    /// (`B`), `""` = no key.
+    pub tool_keys: BTreeMap<String, String>,
     pub menus: MenuCustomization,
     pub toolbar: ToolbarCustomization,
     /// Edit › Check Spelling: words added to the dictionary ("Add").
@@ -1087,6 +1096,42 @@ impl Preferences {
             Some(s) if s.is_empty() => None,
             Some(s) => Some(s.as_str()),
             None => default,
+        }
+    }
+}
+
+// ------------------------------------------------------------------ keymap file
+
+/// The preferences keys that make up the user keymap, which the desktop app also keeps in its own
+/// file (`<settings>/keymap.json`): readable, hand-editable, and applied over the preferences
+/// document when both exist.
+pub const KEYMAP_KEYS: [&str; 4] = ["shortcuts", "extraShortcuts", "mouseButtons", "toolKeys"];
+
+/// The keymap file for a preferences document (JSON as saved by [`Session::prefs_to_json`]).
+/// `profile` names the base set: PhotoCraft's defaults are Photoshop's.
+pub fn keymap_of(prefs: &Value) -> Value {
+    let mut out = serde_json::Map::new();
+    out.insert("version".into(), json!(1));
+    out.insert("profile".into(), json!("photoshop"));
+    for k in KEYMAP_KEYS {
+        out.insert(k.into(), prefs.get(k).cloned().unwrap_or_else(|| json!({})));
+    }
+    Value::Object(out)
+}
+
+/// Lay a keymap file over a preferences document: each of [`KEYMAP_KEYS`] the keymap holds as an
+/// object replaces the document's. Anything else in the keymap is ignored; a keymap that isn't an
+/// object changes nothing.
+pub fn merge_keymap(prefs: &mut Value, keymap: &Value) {
+    if !prefs.is_object() {
+        *prefs = json!({});
+    }
+    let Some(km) = keymap.as_object() else { return };
+    if let Some(p) = prefs.as_object_mut() {
+        for k in KEYMAP_KEYS {
+            if let Some(v) = km.get(k).filter(|v| v.is_object()) {
+                p.insert(k.into(), v.clone());
+            }
         }
     }
 }

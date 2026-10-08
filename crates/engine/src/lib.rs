@@ -60,6 +60,7 @@ pub mod paint_cmds;
 mod path_edit_cmds;
 pub mod pattern_cmds;
 pub mod photo_cmds;
+pub mod photoshop_cmds;
 pub mod pick_cmds;
 mod pixels;
 pub mod plugin_cmds;

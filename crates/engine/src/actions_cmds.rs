@@ -22,11 +22,22 @@ fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
 
 /// One recorded action. `steps` is the `[[id, params], …]` shape `file.automate.batch` and
 /// droplets already accept.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Action {
     pub name: String,
     #[serde(default)]
     pub steps: Vec<(String, Value)>,
+    /// The action set (folder) it came from, for actions imported from Photoshop (`.atn`).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub set: String,
+    /// Photoshop steps PhotoCraft can't run yet (imported actions): their names, in order.
+    /// Playing an action with any refuses unless `skipUnsupported` is given.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unsupported: Vec<String>,
+    /// Every Photoshop step of an imported action, in order (`"Gaussian Blur"`, `"Make"`…), so
+    /// the Actions panel can list them even where PhotoCraft can't run them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_steps: Vec<String>,
 }
 
 /// On-disk form of [`ActionState::list`] (`actions.json` in the preset store).
@@ -116,7 +127,21 @@ fn from_step(p: &Value, len: usize) -> Result<usize> {
 }
 
 fn list(s: &mut Session, _p: &Value) -> Result<Value> {
-    let actions: Vec<Value> = s.actions.list.iter().map(|a| json!({"name": a.name, "steps": a.steps.len()})).collect();
+    let actions: Vec<Value> = s
+        .actions
+        .list
+        .iter()
+        .map(|a| {
+            let mut v = json!({"name": a.name, "steps": a.steps.len()});
+            if !a.set.is_empty() {
+                v["set"] = json!(a.set);
+            }
+            if !a.unsupported.is_empty() {
+                v["unsupported"] = json!(a.unsupported.len());
+            }
+            v
+        })
+        .collect();
     let recording = s.actions.recording.and_then(|(_, i)| s.actions.list.get(i).map(|a| a.name.clone()));
     Ok(json!({"actions": actions, "recording": recording}))
 }
@@ -125,7 +150,7 @@ fn get(s: &mut Session, p: &Value) -> Result<Value> {
     let idx = resolve(&s.actions.list, p, "actions.get")?;
     let action = &s.actions.list[idx];
     let steps: Vec<Value> = action.steps.iter().map(|(id, params)| json!([id, params])).collect();
-    Ok(json!({"name": action.name, "steps": steps}))
+    Ok(json!({"name": action.name, "steps": steps, "set": action.set, "unsupported": action.unsupported, "photoshopSteps": action.source_steps}))
 }
 
 fn record(s: &mut Session, p: &Value) -> Result<Value> {
@@ -141,7 +166,7 @@ fn record(s: &mut Session, p: &Value) -> Result<Value> {
             Some(Value::String(_)) => return Err(bad("actions.record", "\"name\" is empty")),
             Some(_) => return Err(bad("actions.record", "\"name\" must be a string")),
         };
-        s.actions.list.push(Action { name, steps: Vec::new() });
+        s.actions.list.push(Action { name, ..Default::default() });
         s.actions.touch();
         s.actions.list.len() - 1
     };
@@ -194,6 +219,18 @@ fn play(s: &mut Session, p: &Value) -> Result<Value> {
     }
     let idx = resolve(&s.actions.list, p, "actions.play")?;
     let action = s.actions.list[idx].clone();
+    if !action.unsupported.is_empty() && !p.get("skipUnsupported").and_then(Value::as_bool).unwrap_or(false) {
+        return Err(bad(
+            "actions.play",
+            format!(
+                "\"{}\" has {} Photoshop step(s) PhotoCraft can't run yet ({}); pass \"skipUnsupported\": true to run the other {}",
+                action.name,
+                action.unsupported.len(),
+                action.unsupported.join(", "),
+                action.steps.len()
+            ),
+        ));
+    }
     let from = from_step(p, action.steps.len())?;
     s.actions.playing = s.actions.playing.saturating_add(1);
     let (ran, failed) = run_recorded(s, &action.steps, from);
@@ -261,7 +298,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Play Action",
             menu: &[],
             shortcut: None,
-            params: r##"{"action":name|index, "from":step?} → {action, ran, failed?:{step, id, error}}. step and from are 0-based. Stops at the first error (the command still returns ok, with failed set) and leaves one history step per step that ran. Refuses to play while a play is already running. Each step is checked with Session::authorize when one is installed."##,
+            params: r##"{"action":name|index, "from":step?, "skipUnsupported":bool=false (imported Photoshop actions with steps PhotoCraft can't run refuse without it)} → {action, ran, failed?:{step, id, error}}. step and from are 0-based. Stops at the first error (the command still returns ok, with failed set) and leaves one history step per step that ran. Refuses to play while a play is already running. Each step is checked with Session::authorize when one is installed."##,
             enabled: always,
             run: play,
             journal: false,
@@ -353,7 +390,7 @@ mod tests {
     #[test]
     fn play_refuses_recursion() {
         let mut s = Session::new();
-        s.actions.list.push(Action { name: "Loop".into(), steps: vec![("actions.play".into(), json!({"action": "Loop"}))] });
+        s.actions.list.push(Action { name: "Loop".into(), steps: vec![("actions.play".into(), json!({"action": "Loop"}))], ..Default::default() });
         let r = s.execute("actions.play", json!({"action": "Loop"})).unwrap();
         assert_eq!(r["ran"], 0);
         assert_eq!(r["failed"]["id"], "actions.play");
@@ -368,9 +405,11 @@ mod tests {
         }
         let mut s = Session::new();
         s.authorize = Some(deny_file);
-        s.actions
-            .list
-            .push(Action { name: "Open".into(), steps: vec![("file.open".into(), json!({"path": "/etc/passwd"})), ("layer.new.layer".into(), json!({}))] });
+        s.actions.list.push(Action {
+            name: "Open".into(),
+            steps: vec![("file.open".into(), json!({"path": "/etc/passwd"})), ("layer.new.layer".into(), json!({}))],
+            ..Default::default()
+        });
         let r = s.execute("actions.play", json!({"action": "Open"})).unwrap();
         assert_eq!(r["ran"], 0);
         assert_eq!(r["failed"]["step"], 0);

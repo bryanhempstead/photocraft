@@ -22,6 +22,7 @@ pub mod gradients;
 pub mod patterns;
 pub mod shapes;
 pub mod styles;
+pub mod swatches;
 pub mod tools;
 
 #[cfg(test)]
@@ -80,6 +81,10 @@ pub struct PresetState {
     /// The user defaults "Make Default" in the Layer Style dialog saves
     /// (effect kind → param set); "Reset to Default" restores them.
     pub layer_defaults: BTreeMap<String, Value>,
+    /// The user's swatch groups (Window › Swatches shows them after the built-in palette).
+    pub swatches: Vec<Group<swatches::Swatch>>,
+    /// Saved guide layouts (`view.newGuideLayout {"preset"}`).
+    pub guide_layouts: Vec<Group<swatches::GuideLayoutPreset>>,
     /// Bumped on every preset change (UIs key thumbnail caches on it).
     pub rev: u64,
 }
@@ -96,6 +101,8 @@ impl Default for PresetState {
             tool_presets: tools::builtin(),
             clone: Default::default(),
             layer_defaults: BTreeMap::new(),
+            swatches: Vec::new(),
+            guide_layouts: Vec::new(),
             rev: 0,
         }
     }
@@ -120,6 +127,10 @@ struct Persisted {
     custom_shapes: Option<Vec<crate::edit_menu_cmds::CustomShape>>,
     #[serde(default)]
     layer_defaults: Option<BTreeMap<String, Value>>,
+    #[serde(default)]
+    swatches: Option<Vec<Group<swatches::Swatch>>>,
+    #[serde(default)]
+    guide_layouts: Option<Vec<Group<swatches::GuideLayoutPreset>>>,
 }
 
 impl PresetState {
@@ -134,6 +145,8 @@ impl PresetState {
             tool_presets: Some(self.tool_presets.clone()),
             custom_shapes: Some(s.edit_state.custom_shapes.clone()),
             layer_defaults: Some(self.layer_defaults.clone()),
+            swatches: Some(self.swatches.clone()),
+            guide_layouts: Some(self.guide_layouts.clone()),
         };
         serde_json::to_value(p).unwrap_or(Value::Null)
     }
@@ -168,6 +181,12 @@ impl Session {
         }
         if let Some(d) = p.layer_defaults {
             st.layer_defaults = d;
+        }
+        if let Some(w) = p.swatches {
+            st.swatches = w;
+        }
+        if let Some(g) = p.guide_layouts {
+            st.guide_layouts = g;
         }
         self.presets.rev += 1;
     }
@@ -314,6 +333,7 @@ pub fn specs() -> Vec<CommandSpec> {
     v.extend(shapes::specs());
     v.extend(tools::specs());
     v.extend(clone_source::specs());
+    v.extend(swatches::specs());
     v
 }
 

@@ -998,6 +998,23 @@ fn layout_lines(start: f64, end: f64, count: u32, width: Option<f64>, gutter: f6
 }
 
 fn new_guide_layout(s: &mut Session, p: &Value) -> Result<Value> {
+    // A saved layout (`"preset"`): its params, overridden by any given alongside.
+    let merged;
+    let p = match p.get("preset") {
+        Some(name) => {
+            let name = name.as_str().ok_or_else(|| EngineError::BadParams { cmd: "view.newGuideLayout".into(), msg: "`preset` must be a name".into() })?;
+            let mut base = crate::presets::swatches::guide_layout(s, name)
+                .ok_or_else(|| EngineError::BadParams { cmd: "view.newGuideLayout".into(), msg: format!("no guide layout preset \"{name}\"") })?;
+            if let (Some(b), Some(o)) = (base.as_object_mut(), p.as_object()) {
+                for (k, v) in o.iter().filter(|(k, _)| *k != "preset") {
+                    b.insert(k.clone(), v.clone());
+                }
+            }
+            merged = base;
+            &merged
+        }
+        None => p,
+    };
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let (cw, ch) = (d.doc.size.width as f64, d.doc.size.height as f64);
     let m = match p.get("margin") {
@@ -1227,7 +1244,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "New Guide Layout…",
             &["View"],
             None,
-            r##"{"columns":n=0,"width":px?,"gutter":px=0,"rows":n=0,"height":px?,"rowGutter":px=gutter,"margin":px|[top,left,bottom,right]=0,"centerColumns":bool=false,"clearExisting":bool=false}"##,
+            r##"{"preset":name? (a saved layout, see view.guideLayout.presets; other params override it),"columns":n=0,"width":px?,"gutter":px=0,"rows":n=0,"height":px?,"rowGutter":px=gutter,"margin":px|[top,left,bottom,right]=0,"centerColumns":bool=false,"clearExisting":bool=false}"##,
             has_doc,
             new_guide_layout
         ),
