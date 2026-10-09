@@ -10,7 +10,7 @@
 <h1 align="center">PhotoCraft</h1>
 
 <p align="center">
-  <b>Image editing; an open-source, clean-room reimplementation of Adobe Photoshop, rebuilt in pure Rust.</b><br>
+  <b>Image editing; an open-source reimplementation of Adobe Photoshop, rebuilt in Rust.</b><br>
   Layers, masks, adjustment layers, layer styles, type, vectors, brushes and real PSD files,<br>
   in a native app written entirely in Rust. Open source, offline, and yours.
 </p>
@@ -21,6 +21,11 @@
   <img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-3a3a3a?style=flat-square">
   <img alt="Status: early alpha" src="https://img.shields.io/badge/status-early%20alpha-d69e2e?style=flat-square">
 </p>
+
+> **This is Bryan Hempstead's personal fork, and it diverges from upstream.** Since 2026-10-09 it is no longer
+> clean-room or pure Rust: it may link C/C++ colour engines and Adobe SDKs, and it reads the ICC profiles, Photoshop
+> Color Settings and Camera Raw profiles installed on the Mac at runtime, so that its colour matches Photoshop 2026.
+> No Adobe data is in this repository. Upstream: [storytold/photocraft](https://github.com/storytold/photocraft).
 
 <p align="center">
   <a href="https://discord.gg/artcraft"><img alt="Join the ArtCraft community on Discord" src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="40"></a>
@@ -247,7 +252,7 @@ The desktop app also offers an authenticated, loopback-only control channel (`ph
 - **Two compositors:** a CPU compositor serves as the reference oracle, and a wgpu compositor puts the canvas on the GPU. They are tested against each other.
 - **Copy-on-write tiles:** 256² sparse tiles make undo cheap and huge canvases light, and effect maps are cached per layer state.
 - **Runs in the browser:** the whole engine and UI compile to WebAssembly.
-- **Clean-room:** implemented from public specs and observed behaviour only. No proprietary code, shaders or assets.
+- **This fork:** Adobe SDKs, C/C++ colour engines and the Adobe colour data installed on the user's Mac may be used at runtime (see AGENTS.md › Fork rules); upstream is clean-room. No Adobe data is committed.
 - **Tested:** more than 1,700 tests, including PSD round trips, synthetic generators, compositor oracles and multi-depth checks.
 
 ## Get started

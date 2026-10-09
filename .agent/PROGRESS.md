@@ -2,10 +2,12 @@
 
 Bryan wants PhotoCraft to work like his Photoshop 2026: his shortcuts, actions, brushes, patterns, swatches, guides,
 a shortcut editor in settings, and devices (Logi MX Creative Console) that drive it by keystroke.
-Upstream rules are in AGENTS.md (never crash, pure Rust, everything is a command). This board is for his changes.
+Rules are in AGENTS.md (never crash, everything is a command, *Fork rules*). Since 2026-10-09 this is his own fork: Adobe SDKs / C deps
+and the Adobe colour data on his Mac are allowed at runtime, nothing Adobe committed. This board is for his changes.
 Commit on `main`; `origin` = github.com/bryanhempstead/photocraft (his fork), `upstream` = storytold.
 
 ## Open
+- [ ] (colour agent, 2026-10-09) Photoshop colour match: tools/ps-compare (PSD layers vs Photoshop's stored composite, ΔE2000), fixes by feature — in progress
 - [ ] Run the real migration into his settings once he says so (quit PhotoCraft first):
       `target/release/photocraft-cli migrate-photoshop` (or `cargo run --release -p photocraft-cli -- migrate-photoshop`) — defaults: newest PS settings folder → ~/Library/Application Support/Photocraft
 - [ ] Actions: an ActionDescriptor interpreter for select/set/make/move/delete by reference (most of his GLASSMORPH/CUTOUT/NOISE steps); today 0 of 24 actions are fully runnable
