@@ -105,6 +105,14 @@ pub fn load(app: &mut PhotocraftApp) {
     {
         app.ui.status = format!("Preferences were reset: {e}");
     }
+    // Bryan's fork: untouched Color Settings follow Photoshop's on this Mac (real app only:
+    // headless sessions without a preferences store keep the built-in defaults).
+    if app.services.load_prefs.is_some()
+        && !cfg!(test)
+        && let Some(ps) = app.session.adopt_photoshop_color_settings()
+    {
+        app.ui.status = format!("Color Settings: using Photoshop's ({})", ps["workingCmyk"].as_str().unwrap_or("working spaces"));
+    }
     crate::dock::restore(app);
     app.sync_recent();
     app.prefs_rt.saved_rev = app.session.prefs.rev();
