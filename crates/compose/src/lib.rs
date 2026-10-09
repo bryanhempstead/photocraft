@@ -105,7 +105,7 @@ fn render_tiled_with(doc: &Document, rect: Rect, tile: i32, cx: &Ctx) -> Buffer 
         return photocraft_color::convert::with_cmyk_space(cmyk, || {
             let mut buf = multichannel::backdrop(doc, rect);
             psblend::LAB_MIX.with(|l| l.set(lab));
-            composite_stack(&doc.layers, &mut buf, cx);
+            composite_root(doc, &mut buf, cx);
             psblend::LAB_MIX.with(|l| l.set(false));
             buf
         });
@@ -122,7 +122,7 @@ fn render_tiled_with(doc: &Document, rect: Rect, tile: i32, cx: &Ctx) -> Buffer 
         photocraft_color::convert::with_cmyk_space(cmyk, || {
             let mut b = multichannel::backdrop(doc, t);
             psblend::LAB_MIX.with(|l| l.set(lab));
-            composite_stack(&doc.layers, &mut b, cx);
+            composite_root(doc, &mut b, cx);
             psblend::LAB_MIX.with(|l| l.set(false));
             b
         })
@@ -504,7 +504,76 @@ fn effect_layers<'l>(layers: &'l [Layer], rect: Rect, depth: u32, out: &mut Vec<
 }
 
 /// Composite a sibling list (bottom→top) onto `backdrop`.
+/// Blending Options › Knockout of a layer (PSD `knko`): 0 none, 1 shallow, 2 deep.
+pub fn knockout(layer: &Layer) -> u8 {
+    layer.psd_blocks.iter().find(|(k, _)| k == b"knko").and_then(|(_, v)| v.first().copied()).unwrap_or(0)
+}
+
+/// Knockout: where `layer` has pixels (content alpha, masks, layer opacity), the layers beneath
+/// it are cut away down to `initial` (the group's starting backdrop for shallow knockout, the
+/// Background layer for deep knockout and at the document level; see [`composite_root`]). The layer
+/// itself then composites as usual at its fill opacity, so Fill 0 % leaves a clean hole: the
+/// photocopy-texture templates use exactly that.
+fn knock_out(layer: &Layer, backdrop: &mut Buffer, initial: &Buffer, cx: &Ctx) {
+    let Some(content) = render_content(layer, backdrop.rect, cx) else { return };
+    for ((p, a), c) in backdrop.px.iter_mut().zip(&initial.px).zip(&content.px) {
+        let k = (c[3] * layer.opacity).clamp(0.0, 1.0);
+        if k <= 0.0 {
+            continue;
+        }
+        let b = *p;
+        // Mix premultiplied colour; the buffer stays straight alpha.
+        let wb = b[3] * (1.0 - k);
+        let wa = a[3] * k;
+        let alpha = wa + wb;
+        *p = if alpha > 0.0 {
+            let m = |i: usize| (a[i] * wa + b[i] * wb) / alpha;
+            [m(0), m(1), m(2), alpha]
+        } else {
+            [0.0; 4]
+        };
+    }
+}
+
+thread_local! {
+    /// What deep knockout reveals in the tile being rendered: the document's Background layer
+    /// alone, or transparency without one (set by [`composite_root`] only when a layer knocks out).
+    static KNOCK_DEEP: std::cell::RefCell<Option<Buffer>> = const { std::cell::RefCell::new(None) };
+}
+
+fn any_knockout(layers: &[Layer], depth: u32) -> bool {
+    depth < 64 && layers.iter().any(|l| l.visible && (knockout(l) != 0 || matches!(&l.content, LayerContent::Group(g) if any_knockout(&g.children, depth + 1))))
+}
+
+/// The document's layers into `backdrop`. Knockout at the top level, and deep knockout at any
+/// level, reveal the Background layer (Photoshop: "Deep knocks out to the background; with no
+/// background, to transparency"; shallow stops at the end of its group, or at the background).
+fn composite_root(doc: &Document, backdrop: &mut Buffer, cx: &Ctx) {
+    if !any_knockout(&doc.layers, 0) {
+        composite_stack(&doc.layers, backdrop, cx);
+        return;
+    }
+    let mut bg = backdrop.clone();
+    let bottom = doc.layers.first().filter(|l| l.visible && l.name == "Background" && l.locks.transparency && matches!(l.content, LayerContent::Raster(_)));
+    if let Some(b) = bottom {
+        composite_layer(b, &[], &mut bg, cx);
+    }
+    KNOCK_DEEP.with(|k| *k.borrow_mut() = Some(bg.clone()));
+    composite_stack_from(&doc.layers, backdrop, cx, Some(&bg));
+    KNOCK_DEEP.with(|k| *k.borrow_mut() = None);
+}
+
 fn composite_stack(layers: &[Layer], backdrop: &mut Buffer, cx: &Ctx) {
+    composite_stack_from(layers, backdrop, cx, None);
+}
+
+/// `root_initial`: what shallow knockout reveals at this level (the Background at the document
+/// level; otherwise the group's starting backdrop).
+fn composite_stack_from(layers: &[Layer], backdrop: &mut Buffer, cx: &Ctx, root_initial: Option<&Buffer>) {
+    // The group's starting backdrop, kept only when a layer here knocks out to it.
+    let knocks = layers.iter().any(|l| l.visible && knockout(l) != 0 && !matches!(l.content, LayerContent::Adjustment(_)));
+    let initial = (knocks && root_initial.is_none()).then(|| backdrop.clone());
+    let initial = root_initial.or(initial.as_ref());
     let mut i = 0;
     while i < layers.len() {
         let base = &layers[i];
@@ -515,6 +584,12 @@ fn composite_stack(layers: &[Layer], backdrop: &mut Buffer, cx: &Ctx) {
         }
         let clipped = &layers[i + 1..j];
         if base.visible {
+            if let Some(initial) = initial
+                && knockout(base) != 0
+            {
+                let deep = (knockout(base) == 2).then(|| KNOCK_DEEP.with(|k| k.borrow().clone())).flatten().filter(|b| b.rect == backdrop.rect);
+                knock_out(base, backdrop, deep.as_ref().unwrap_or(initial), cx);
+            }
             composite_layer(base, clipped, backdrop, cx);
             if let (LayerContent::Adjustment(_), Some(q)) = (&base.content, adjustment_quantum(cx.depth)) {
                 quantize(backdrop, q);
@@ -679,7 +754,10 @@ fn render_content(layer: &Layer, rect: Rect, cx: &Ctx) -> Option<Buffer> {
     let mut buf = match &layer.content {
         LayerContent::Group(g) => {
             let mut b = Buffer::transparent(rect);
+            // An isolated group stops deep knockout: inside it, it reaches the group's start.
+            let deep = KNOCK_DEEP.with(|k| k.borrow_mut().take());
             composite_stack(&g.children, &mut b, cx);
+            KNOCK_DEEP.with(|k| *k.borrow_mut() = deep);
             b
         }
         LayerContent::Fill(f) => match &layer.fill_cache {

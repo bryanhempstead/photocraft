@@ -1487,3 +1487,57 @@ fn photo_filter_matches_photoshop() {
         assert!(got.iter().zip(ps).all(|(g, p)| (g - p).abs() <= 2.5), "F32 {v:?}: got {got:?} want {ps:?}");
     }
 }
+
+// ---- Bryan's fork: colour fixes measured against Photoshop (tools/ps-compare) ----
+
+fn knock(l: &mut Layer, v: u8) {
+    l.psd_blocks.push((*b"knko", std::sync::Arc::new(vec![v, 0, 0, 0])));
+}
+
+#[test]
+fn shallow_knockout_at_fill_zero_cuts_through_its_group() {
+    // White background, a Multiply group holding black ink and a fill-0 % knockout texture over
+    // half of it: the texture shows the background through the ink (photocopy templates).
+    let mut d = doc_white(8, 8);
+    let ink = solid_layer("ink", Rect::new(0, 0, 8, 8), [0.0, 0.0, 0.0, 1.0]);
+    let mut tex = solid_layer("texture", Rect::new(0, 0, 4, 8), [0.5, 0.5, 0.5, 1.0]);
+    tex.fill_opacity = 0.0;
+    knock(&mut tex, 1);
+    let mut g = Layer::group("art", vec![ink, tex]);
+    g.blend = BlendMode::Multiply;
+    d.layers.push(g);
+    assert!(close4(px(&d, 1, 1), [1.0; 4]), "knocked out: {:?}", px(&d, 1, 1));
+    assert!(close4(px(&d, 6, 1), [0.0, 0.0, 0.0, 1.0]), "ink stays: {:?}", px(&d, 6, 1));
+}
+
+#[test]
+fn deep_knockout_reaches_the_background_through_pass_through_groups() {
+    let mut d = Document::with_background("t", Size::new(4, 4), ColorMode::Rgb, SampleType::U8, Color::rgb(0.0, 1.0, 1.0));
+    d.layers.push(solid_layer("red", Rect::new(0, 0, 4, 4), [1.0, 0.0, 0.0, 1.0]));
+    let mut blue = solid_layer("blue", Rect::new(0, 0, 4, 4), [0.0, 0.0, 1.0, 1.0]);
+    blue.fill_opacity = 0.0;
+    knock(&mut blue, 2);
+    let mut outer = Layer::group("outer", vec![blue]);
+    outer.blend = BlendMode::PassThrough;
+    d.layers.push(outer);
+    assert!(close4(px(&d, 1, 1), [0.0, 1.0, 1.0, 1.0]), "{:?}", px(&d, 1, 1));
+}
+
+#[test]
+fn black_and_white_tint_is_the_tint_at_the_grey_luminosity() {
+    // Photoshop's tint acts like the Color blend mode (corpus black-white-tint).
+    let t = [0.88235295, 0.827451, 0.7019608];
+    let mut b = Buffer::filled(Rect::new(0, 0, 1, 1), [0.5, 0.5, 0.5, 1.0]);
+    adjust::apply(&Adjustment::BlackWhite { weights: [40.0, 60.0, 40.0, 60.0, 20.0, 80.0], tint: Some(t) }, &mut b);
+    let p = b.px[0];
+    assert!((photocraft_color::blend::lum([p[0], p[1], p[2]]) - 0.5).abs() < 1e-3, "{p:?}");
+    assert!((p[0] - p[1] - (t[0] - t[1])).abs() < 1e-3 && (p[1] - p[2] - (t[1] - t[2])).abs() < 1e-3, "{p:?}");
+}
+
+#[test]
+fn colorize_lightness_keeps_the_hue_on_black() {
+    // Hue/Saturation Colorize with Lightness +22 turns black into a dark tint, not a grey.
+    let c = adjust::hue_saturation([0.0, 0.0, 0.0], -147.0, 0.34, 0.22, true);
+    assert!(c[2] > c[0] + 0.05, "{c:?}");
+    assert!(((c[0].max(c[1]).max(c[2]) + c[0].min(c[1]).min(c[2])) / 2.0 - 0.22).abs() < 1e-3, "{c:?}");
+}

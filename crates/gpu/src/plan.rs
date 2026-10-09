@@ -486,6 +486,9 @@ impl<'a> Planner<'a> {
         if photocraft_compose::blend_if_active(layer, self.cx.mode) {
             return Err(Unsupported(format!("Blend If on `{}` (composited on the CPU)", layer.name)));
         }
+        if layer.visible && photocraft_compose::knockout(layer) != 0 {
+            return Err(Unsupported(format!("Knockout on `{}` (composited on the CPU)", layer.name)));
+        }
         Ok(())
     }
 

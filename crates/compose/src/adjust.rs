@@ -167,7 +167,9 @@ pub fn apply_depth(adj: &Adjustment, buf: &mut Buffer, transfer: Transfer, depth
         Adjustment::BlackWhite { weights, tint } => map_rgb(buf, |c| {
             let g = black_white_gray(c, weights);
             match tint {
-                Some(t) => std::array::from_fn(|i| (g * t[i] * 2.0).clamp(0.0, 1.0) * 0.5 + g * 0.5),
+                // Photoshop tints like the Color blend mode: the tint colour at the grey's
+                // luminosity (corpus black-white-tint: mean ΔE2000 10.5 → 0.2).
+                Some(t) => photocraft_color::blend::set_lum(*t, g).map(|v| v.clamp(0.0, 1.0)),
                 None => [g; 3],
             }
         }),
@@ -311,8 +313,11 @@ pub fn hue_range_tables(ranges: &[HueRange; 6]) -> [Vec<f32>; 3] {
 pub fn hue_saturation(c: [f32; 3], hue: f32, s: f32, l: f32, colorize: bool) -> [f32; 3] {
     let (mut hh, mut ss, ll) = rgb_to_hsl(c);
     if colorize {
-        hh = hue.rem_euclid(360.0) / 360.0;
-        ss = s.abs().max(0.25);
+        // Photoshop colorizes the lightened/darkened tone: Lightness moves the pixel's lightness
+        // toward white or black first, then the colour is built at that lightness, so a
+        // colorized black with Lightness +22 is a dark tint of the hue, not a neutral grey.
+        let ll = if l > 0.0 { ll + (1.0 - ll) * l } else { ll * (1.0 + l) };
+        return hsl_to_rgb(hue.rem_euclid(360.0) / 360.0, s.abs().max(0.25), ll);
     } else {
         hh = (hh + hue / 360.0).rem_euclid(1.0);
         ss = (ss * (1.0 + s)).clamp(0.0, 1.0);

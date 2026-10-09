@@ -507,8 +507,10 @@ fn adjust(c: vec3<f32>) -> vec3<f32> {
             let sat = clamp(p0.y + ds, -1.0, 1.0);
             let light = clamp(p0.z + dl, -1.0, 1.0);
             if (p0.w > 0.5) {
-                hh = rem_euclid(p0.x, 360.0) / 360.0;
-                ss = max(abs(sat), 0.25);
+                // Colorize builds the colour at the lightened/darkened tone (as the CPU path).
+                var ll = hsl.z;
+                if (light > 0.0) { ll = ll + (1.0 - ll) * light; } else if (light < 0.0) { ll = ll * (1.0 + light); }
+                return hsl_to_rgb(rem_euclid(p0.x, 360.0) / 360.0, max(abs(sat), 0.25), ll);
             } else {
                 hh = rem_euclid(hsl.x + (p0.x + dh) / 360.0, 1.0);
                 ss = clamp(hsl.y * (1.0 + sat), 0.0, 1.0);
@@ -552,7 +554,7 @@ fn adjust(c: vec3<f32>) -> vec3<f32> {
             if (c.b <= c.r && c.b <= c.g) { secondary = 1; } else if (c.r <= c.g) { secondary = 3; }
             let g = clamp(mn + (mid - mn) * w[secondary] / 100.0 + (mx - mid) * w[primary] / 100.0, 0.0, 1.0);
             if (p1.z > 0.5) {
-                return clamp(g * p2.rgb * 2.0, vec3(0.0), vec3(1.0)) * 0.5 + g * 0.5;
+                return clamp(set_lum(p2.rgb, g), vec3(0.0), vec3(1.0));
             }
             return vec3(g);
         }
