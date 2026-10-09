@@ -1,0 +1,32 @@
+[package]
+name = "photocraft-ps-compare"
+description = "Measure PhotoCraft's colour against Photoshop: render a PSD from its layers and compare with the composite Photoshop stored in the file (CIEDE2000 via Little CMS)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "photocraft_ps_compare"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ps-compare"
+path = "src/main.rs"
+
+[[bin]]
+name = "cms-compare"
+path = "src/cms.rs"
+
+[dependencies]
+photocraft-psd = { workspace = true }
+photocraft-io = { workspace = true }
+photocraft-compose = { workspace = true }
+photocraft-doc = { workspace = true }
+photocraft-color = { workspace = true }
+photocraft-cms = { workspace = true }
+lcms2 = "6.1"
+image = { workspace = true, features = ["png"] }
+serde_json = { workspace = true }
+rayon = { workspace = true }
