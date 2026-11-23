@@ -67,12 +67,6 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
     let dialogs = app.ui.dialogs.clone();
     let mut shown = Vec::new();
     for d in dialogs {
-        let lang = if crate::prefs_ui::is_preferences(&d.fields) {
-            crate::i18n::Lang::from_pref(d.fields.get("values").and_then(|v| v.pointer("/interface/language")).and_then(Value::as_str).unwrap_or("auto"))
-        } else {
-            crate::i18n::current()
-        };
-        let _language = crate::i18n::language_scope(lang);
         let mut fields = d.fields.clone();
         let mut outcome: Option<bool> = None; // Some(true)=OK, Some(false)=Cancel
         let mut apply_requested = false;
@@ -281,10 +275,7 @@ fn display_title(d: &Dialog) -> String {
     match d.kind {
         DialogKind::Command => {
             let label = d.fields.get("__label").and_then(Value::as_str).unwrap_or("Command");
-            // Dialog labels are catalogued with their "…" ("Export As…"); some commands omit it.
-            let with_dots = format!("{}…", label.trim_end_matches('…'));
-            let shown = if crate::i18n::has(crate::i18n::current(), label) { tl!(label) } else { tl!(&with_dots) };
-            shown.trim_end_matches('…').to_string()
+            label.trim_end_matches('…').to_string()
         }
         _ => tl!(&title(d)).to_string(),
     }

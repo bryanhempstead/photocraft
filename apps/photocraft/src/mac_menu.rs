@@ -4,7 +4,7 @@
 //!
 //! - Item ids are command ids; a command in two menus (Keyboard Shortcuts is in Edit and Window)
 //!   gets `id#2` for its second copy, as muda ids must be unique.
-//! - A structure change (a new Open Recent file, a language switch) rebuilds the menu; anything
+//! - A structure change (a new Open Recent file) rebuilds the menu; anything
 //!   else (labels, enabled, checked) is updated in place.
 //! - A chosen item is a click or a key equivalent: AppKit's current event says which. Key
 //!   equivalents go back to egui as the key press that was made (the event's modifiers, not the
@@ -215,9 +215,7 @@ impl Backend for MacMenu {
 
 /// Install the menu bar now (in eframe's creator closure, so winit's default menu doesn't stay).
 pub fn install(ctx: &egui::Context, app: &photocraft_ui_egui::PhotocraftApp) -> Option<native_menu::NativeMenu> {
-    let language = &app.session.prefs().interface.language;
-    let lang = photocraft_ui_egui::i18n::Lang::from_pref(language);
-    let bar = native_menu::photocraft_layout(&photocraft_ui_egui::menus::menu_items(app), lang, language).bar;
+    let bar = native_menu::photocraft_layout(&photocraft_ui_egui::menus::menu_items(app), photocraft_ui_egui::i18n::Lang::EN).bar;
     // Never crash for a menu: if AppKit refuses, keep the in-window menus.
     let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let mut menu = MacMenu::new(ctx);
@@ -338,7 +336,7 @@ mod tests {
     #[test]
     fn every_menu_shortcut_maps_to_a_key_equivalent() {
         let app = photocraft_ui_egui::PhotocraftApp::new(photocraft_engine::Session::new(), photocraft_ui_egui::Services::default());
-        let bar = native_menu::photocraft_layout(&photocraft_ui_egui::menus::menu_items(&app), photocraft_ui_egui::i18n::Lang::EN, "auto").bar;
+        let bar = native_menu::photocraft_layout(&photocraft_ui_egui::menus::menu_items(&app), photocraft_ui_egui::i18n::Lang::EN).bar;
         let mut native = 0;
         for it in bar.items() {
             let Some(c) = it.shortcut.as_deref().and_then(Chord::parse) else { continue };

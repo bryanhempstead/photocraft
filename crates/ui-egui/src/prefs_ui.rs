@@ -842,8 +842,7 @@ fn prefs_body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
     let t = Tokens::get(ui.ctx());
     let mut section = f.get("section").and_then(Value::as_str).unwrap_or("general").to_string();
     let mut values = f.get("values").cloned().unwrap_or(Value::Null);
-    // The dialog follows the language being edited, so a change shows before OK.
-    let lang = crate::i18n::Lang::from_pref(values.pointer("/interface/language").and_then(Value::as_str).unwrap_or("auto"));
+    let lang = crate::i18n::current();
     ui.horizontal_top(|ui| {
         // Section list.
         ui.vertical(|ui| {
@@ -1016,14 +1015,6 @@ fn section_fields(ui: &mut egui::Ui, section: &str, obj: &mut Map<String, Value>
                     let mut b = *b;
                     crate::widgets::checkbox(ui, &mut b, &label);
                     obj.insert(k, json!(b));
-                }
-                Value::String(s) if path == "interface.language" => {
-                    ui.label(RichText::new(tl!(&label)).color(t.text_dim));
-                    let mut pairs: Vec<(String, &str)> = vec![("auto".into(), tl!("Auto"))];
-                    pairs.extend(crate::i18n::Lang::all().map(|l| (l.code().to_string(), l.name())));
-                    let mut cur = s.clone();
-                    crate::widgets::dropdown(ui, &format!("pref-{path}"), &mut cur, &pairs, 220.0);
-                    obj.insert(k, json!(cur));
                 }
                 Value::String(s) if prefs::choices(&path).is_some() => {
                     ui.label(RichText::new(tl!(&label)).color(t.text_dim));
@@ -1571,31 +1562,6 @@ mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
 
-    /// Every generated preference label, section title and choice label has an entry in each
-    /// language that claims complete menus (Japanese, Traditional Chinese, ...).
-    #[test]
-    fn preference_labels_are_translated() {
-        let session = photocraft_engine::Session::new();
-        let v: Value = serde_json::from_str(&session.prefs_to_json()).expect("prefs json");
-        for lang in crate::i18n::Lang::all().filter(|l| l.complete_menus()) {
-            let mut missing = Vec::new();
-            for (sec, title) in SECTIONS {
-                if !crate::i18n::has(lang, title) {
-                    missing.push(title.to_string());
-                }
-                let Some(obj) = v.get(sec).and_then(Value::as_object) else { continue };
-                for k in obj.keys() {
-                    let mut labels = vec![humanize(k)];
-                    labels.extend(prefs::choices(&format!("{sec}.{k}")).into_iter().flatten().map(|c| choice_label(c)));
-                    missing.extend(labels.into_iter().filter(|l| !crate::i18n::has(lang, l)));
-                }
-            }
-            missing.sort();
-            missing.dedup();
-            assert!(missing.is_empty(), "{}: untranslated preference labels: {missing:#?}", lang.code());
-        }
-    }
-
     fn app_with_store() -> (PhotocraftApp, Arc<Mutex<Option<String>>>) {
         app_with_saved(None)
     }
@@ -1948,7 +1914,7 @@ mod tests {
         };
 
         let (mut app, store) = app_with_store();
-        app.run("prefs.set", json!({"values": {"interface.language": "en", "type.smartQuotes": false}})).unwrap();
+        app.run("prefs.set", json!({"values": {"type.smartQuotes": false}})).unwrap();
         let id = open_preferences(&mut app, "interface");
         let mut h = Harness::builder().with_size(vec2(1280.0, 800.0)).build_eframe(move |cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());

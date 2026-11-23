@@ -62,13 +62,6 @@ issue = 220
 note = "No bug report dialog in crates"
 
 [[item]]
-id = "DIST-220-4"
-target = "Translation coverage per language reported by xtask; RTL layout for Arabic and Hebrew"
-status = "partial"
-issue = 220
-note = "`cargo xtask i18n-coverage` reports per-language coverage (#427); no RTL layout yet"
-
-[[item]]
 id = "DIST-220-5"
 target = "Linux AppImage x86_64 + aarch64 ship; Flatpak kept; Flathub later (#173)"
 status = "partial"
