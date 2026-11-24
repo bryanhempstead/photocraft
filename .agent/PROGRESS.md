@@ -7,6 +7,14 @@ and the Adobe colour data on his Mac are allowed at runtime, nothing Adobe commi
 Commit on `main`; `origin` = github.com/bryanhempstead/photocraft (his fork), `upstream` = storytold.
 
 ## Open
+- [ ] (labels agent, 2026-11-23, branch `agent-labels` in ~/crafts/pc-labels, not merged) **Whole-word labels +
+  color.** Bryan's rule (SOUL 11-23): labels spell every word out, lowercase, periods for spaces, "color" never
+  "colour". Prefs sidebar shrt. → shortcuts., mouse row fwd. → forward. (the rest of PhotoCraft mirrors Photoshop's
+  Title Case and is left alone); colour → color in every string literal (comments/identifiers untouched).
+  Verified: `cargo test --release -p photocraft-ui-egui --lib` 816 green, clippy -D warnings green. Left: merge.
+  Not foldable yet (Bryan's other 11-23 rule, every list/section collapsible + remembered): see the labels agent's
+  report — Properties sections / Document Properties / preset folders / brush groups / action sets fold but aren't
+  remembered; Swatches groups, Shortcuts editor groups, Export/Print/Liquify/Wide Angle/New Document sections can't fold.
 - [ ] (colour agent, 2026-10-09) Next colour work, by measured size (tools/ps-compare on corpus/photoshop): Color Balance (rgb8 mean ΔE 6.0: Photoshop's is an exact per-channel LUT — proven, output channel depends only on its input channel — but the slider→LUT formula needs more samples), Vibrance (2.9), Brightness/Contrast legacy (1.5), 32-bit adjustments (levels/exposure/hue-sat 6–8), CMYK/Lab adjustments (8+). **Bryan could help**: save 3–4 small PSDs with Color Balance / Vibrance at different slider settings (Maximize Compatibility on) into the corpus — each one pins the formula.
 - [ ] (colour agent) Camera Raw in PhotoCraft (crates/raw/develop.rs) uses the DNG ColorMatrix → linear ProPhoto, no Adobe Standard DCP / ACR tone curve: once LightCraft's dng-sdk-sys + DCP path lands, port it here (fork rules allow).
 - [x] (colour agent, 2026-10-09) Photoshop colour match round 1 — 95f75b0 (fork rules), 285b43e (tools/ps-compare + cms-compare), 17f5123 (knockout, colorize, B&W tint), 0fb6117 (Color Settings from Photoshop), 945c273 (corpus floors psd-tools 237, photoshop 135)
