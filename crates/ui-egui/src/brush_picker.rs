@@ -7,8 +7,6 @@
 //! `tools.setBrush` ([`crate::brush_panel::commit_gesture`]) and applies the returned [`Pick`]
 //! with [`apply`], so every change is a journaled command (Rule 1).
 
-use std::collections::BTreeSet;
-
 use egui::{Color32, RichText, Sense, Stroke, pos2, vec2};
 use photocraft_engine::BrushSettings;
 use photocraft_engine::paint::{BrushPreset, MAX_BRUSH_SIZE};
@@ -34,11 +32,11 @@ pub enum Pick {
     NewPreset,
 }
 
-/// Picker view state kept in egui memory: the name filter and the collapsed groups.
+/// Picker view state kept in egui memory: the name filter (the groups' folds are remembered,
+/// `crate::folds`).
 #[derive(Clone, Debug, Default)]
 struct View {
     filter: String,
-    collapsed: BTreeSet<String>,
 }
 
 fn view_id() -> egui::Id {
@@ -138,9 +136,12 @@ pub fn body(ui: &mut egui::Ui, b: &mut BrushSettings, presets: &[BrushPreset]) -
             if items.is_empty() {
                 continue;
             }
-            let open = !filter.is_empty() || !view.collapsed.contains(&label);
-            if group_header(ui, &label, open, items.len()) && !view.collapsed.remove(&label) {
-                view.collapsed.insert(label.clone());
+            // the same remembered fold as the Brushes panel's group (crate::folds)
+            let fold = crate::brushes_tab::brush_group_fold(&label);
+            let folded = !crate::folds::is_open(ui.ctx(), &fold);
+            let open = !filter.is_empty() || !folded;
+            if group_header(ui, &label, open, items.len()) {
+                crate::folds::set(ui.ctx(), &fold, folded);
             }
             if !open {
                 continue;

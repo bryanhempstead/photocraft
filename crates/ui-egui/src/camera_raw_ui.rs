@@ -510,15 +510,26 @@ fn tone_row(ui: &mut egui::Ui, dirty: &mut bool, alt: &mut Option<ToneZone>, zon
     }
 }
 
+/// A panel section (Light, Color, Effects…): egui's collapsing header, its open state remembered
+/// with the other folds (`crate::folds`, id `camera.raw.<title>`; `open` until first changed).
 fn section(ui: &mut egui::Ui, title: &str, open: bool, body: impl FnOnce(&mut egui::Ui)) {
-    egui::CollapsingHeader::new(egui::RichText::new(crate::i18n::tr_ctx(crate::i18n::current(), "cameraRaw", title)).font(FontId::proportional(13.0)))
+    let fold = format!("camera.raw.{}", crate::folds::slug(title));
+    let is_open = crate::folds::is_open_or(ui.ctx(), &fold, open);
+    let r = egui::CollapsingHeader::new(egui::RichText::new(crate::i18n::tr_ctx(crate::i18n::current(), "cameraRaw", title)).font(FontId::proportional(13.0)))
         .id_salt(("camera-raw-section", title))
-        .default_open(open)
+        .open(Some(is_open))
         .show(ui, body);
+    if r.header_response.clicked() {
+        crate::folds::set(ui.ctx(), &fold, !is_open);
+    }
 }
 
 fn wheel(ui: &mut egui::Ui, dirty: &mut bool, title: &str, w: &mut Wheel) {
-    widgets::section_label(ui, crate::i18n::tr_ctx(crate::i18n::current(), "cameraRaw", title));
+    // each wheel folds (remembered, crate::folds)
+    let fold = format!("camera.raw.grading.{}", crate::folds::slug(title));
+    if !crate::folds::label(ui, &fold, crate::i18n::tr_ctx(crate::i18n::current(), "cameraRaw", title)) {
+        return;
+    }
     let hs = widgets::hue_stops();
     row(ui, dirty, "Hue", &mut w.hue, 0.0..=360.0, Some(&hs));
     row(ui, dirty, "Saturation", &mut w.sat, 0.0..=100.0, None);
@@ -650,41 +661,44 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
                 tone_row(ui, &mut dirty, alt, ToneZone::Blacks, &mut p.blacks);
             });
             section(ui, "Color", false, |ui| {
-                widgets::section_label(ui, tl!("White Balance: As Shot"));
-                row(ui, &mut dirty, "Temperature", &mut p.temperature, -100.0..=100.0, Some(&ts));
-                row(ui, &mut dirty, "Tint", &mut p.tint, -100.0..=100.0, Some(&tn));
-                row(ui, &mut dirty, "Vibrance", &mut p.vibrance, -100.0..=100.0, None);
-                row(ui, &mut dirty, "Saturation", &mut p.saturation, -100.0..=100.0, None);
+                if crate::folds::label(ui, "camera.raw.white.balance", "White Balance: As Shot") {
+                    row(ui, &mut dirty, "Temperature", &mut p.temperature, -100.0..=100.0, Some(&ts));
+                    row(ui, &mut dirty, "Tint", &mut p.tint, -100.0..=100.0, Some(&tn));
+                    row(ui, &mut dirty, "Vibrance", &mut p.vibrance, -100.0..=100.0, None);
+                    row(ui, &mut dirty, "Saturation", &mut p.saturation, -100.0..=100.0, None);
+                }
             });
             section(ui, "Effects", false, |ui| {
                 row(ui, &mut dirty, "Texture", &mut p.texture, -100.0..=100.0, None);
                 row(ui, &mut dirty, "Clarity", &mut p.clarity, -100.0..=100.0, None);
                 row(ui, &mut dirty, "Dehaze", &mut p.dehaze, -100.0..=100.0, None);
-                widgets::section_label(ui, tl!("Vignetting"));
-                let mut style = p.vignette_style.clone();
-                if widgets::dropdown(
-                    ui,
-                    "cr-vig-style",
-                    &mut style,
-                    &[
-                        ("highlightPriority".to_string(), tl!("Highlight Priority")),
-                        ("colorPriority".to_string(), tl!("Color Priority")),
-                        ("paintOverlay".to_string(), tl!("Paint Overlay")),
-                    ],
-                    200.0,
-                ) {
-                    p.vignette_style = style;
-                    dirty = true;
+                if crate::folds::label(ui, "camera.raw.vignetting", "Vignetting") {
+                    let mut style = p.vignette_style.clone();
+                    if widgets::dropdown(
+                        ui,
+                        "cr-vig-style",
+                        &mut style,
+                        &[
+                            ("highlightPriority".to_string(), tl!("Highlight Priority")),
+                            ("colorPriority".to_string(), tl!("Color Priority")),
+                            ("paintOverlay".to_string(), tl!("Paint Overlay")),
+                        ],
+                        200.0,
+                    ) {
+                        p.vignette_style = style;
+                        dirty = true;
+                    }
+                    row(ui, &mut dirty, "Amount", &mut p.vignette_amount, -100.0..=100.0, None);
+                    row(ui, &mut dirty, "Midpoint", &mut p.vignette_midpoint, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Roundness", &mut p.vignette_roundness, -100.0..=100.0, None);
+                    row(ui, &mut dirty, "Feather", &mut p.vignette_feather, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Highlights", &mut p.vignette_highlights, 0.0..=100.0, None);
                 }
-                row(ui, &mut dirty, "Amount", &mut p.vignette_amount, -100.0..=100.0, None);
-                row(ui, &mut dirty, "Midpoint", &mut p.vignette_midpoint, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Roundness", &mut p.vignette_roundness, -100.0..=100.0, None);
-                row(ui, &mut dirty, "Feather", &mut p.vignette_feather, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Highlights", &mut p.vignette_highlights, 0.0..=100.0, None);
-                widgets::section_label(ui, tl!("Grain"));
-                row(ui, &mut dirty, "Amount", &mut p.grain_amount, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Size", &mut p.grain_size, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Roughness", &mut p.grain_roughness, 0.0..=100.0, None);
+                if crate::folds::label(ui, "camera.raw.grain", "Grain") {
+                    row(ui, &mut dirty, "Amount", &mut p.grain_amount, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Size", &mut p.grain_size, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Roughness", &mut p.grain_roughness, 0.0..=100.0, None);
+                }
             });
             section(ui, "Curve", false, |ui| {
                 d.curve_rect = Some(curve_editor(ui, p, &mut dirty, &mut d.curve_state));
@@ -725,16 +739,18 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
                 row(ui, &mut dirty, "Balance", &mut p.grade_balance, -100.0..=100.0, None);
             });
             section(ui, "Detail", false, |ui| {
-                widgets::section_label(ui, tl!("Sharpening"));
-                row(ui, &mut dirty, "Amount", &mut p.sharpen_amount, 0.0..=150.0, None);
-                row(ui, &mut dirty, "Radius", &mut p.sharpen_radius, 0.5..=3.0, None);
-                row(ui, &mut dirty, "Detail", &mut p.sharpen_detail, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Masking", &mut p.sharpen_masking, 0.0..=100.0, None);
-                widgets::section_label(ui, tl!("Noise Reduction"));
-                row(ui, &mut dirty, "Luminance", &mut p.noise_luminance, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Luminance Detail", &mut p.noise_luminance_detail, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Color", &mut p.noise_color, 0.0..=100.0, None);
-                row(ui, &mut dirty, "Color Detail", &mut p.noise_color_detail, 0.0..=100.0, None);
+                if crate::folds::label(ui, "camera.raw.sharpening", "Sharpening") {
+                    row(ui, &mut dirty, "Amount", &mut p.sharpen_amount, 0.0..=150.0, None);
+                    row(ui, &mut dirty, "Radius", &mut p.sharpen_radius, 0.5..=3.0, None);
+                    row(ui, &mut dirty, "Detail", &mut p.sharpen_detail, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Masking", &mut p.sharpen_masking, 0.0..=100.0, None);
+                }
+                if crate::folds::label(ui, "camera.raw.noise.reduction", "Noise Reduction") {
+                    row(ui, &mut dirty, "Luminance", &mut p.noise_luminance, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Luminance Detail", &mut p.noise_luminance_detail, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Color", &mut p.noise_color, 0.0..=100.0, None);
+                    row(ui, &mut dirty, "Color Detail", &mut p.noise_color_detail, 0.0..=100.0, None);
+                }
             });
         });
         super::camera_raw_scope_ui::floating(ctx, d, scope, right);

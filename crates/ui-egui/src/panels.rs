@@ -1288,7 +1288,10 @@ fn swatches(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         app.session.presets.swatches.iter().map(|g| (g.name.clone(), g.items.iter().map(|w| (w.rgb, w.name.clone())).collect())).collect();
     for (name, items) in groups {
         ui.add_space(6.0);
-        ui.label(RichText::new(&name).small().color(t.text_dim));
+        // each group folds (remembered, crate::folds)
+        if !crate::folds::label(ui, &format!("swatches.group:{name}"), &name) {
+            continue;
+        }
         ui.add_space(2.0);
         swatch_grid(app, ui, &format!("sw-{name}"), &items);
     }
@@ -2292,7 +2295,10 @@ fn properties_body(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
 /// Photoshop's Adjustments panel: a grid of one-click adjustment layers.
 fn adjustments_grid(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    ui.label(RichText::new(tl!("Add an adjustment")).color(t.text_dim));
+    // folds to its title (remembered, crate::folds)
+    if !crate::folds::label_with(ui, "adjustments.add", "Add an adjustment", egui::FontId::proportional(12.0), t.text_dim) {
+        return;
+    }
     ui.add_space(4.0);
     let items: [(&str, &str, &str); 16] = [
         ("brightnessContrast", "sun", tl!("Brightness/Contrast")),

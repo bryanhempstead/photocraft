@@ -53,15 +53,12 @@ pub fn windows(app: &mut PhotocraftApp, ctx: &egui::Context) {
     let t = Tokens::get(ctx);
 
     crate::analysis_ui::panel_window(app, ctx, "timeline", tl!("Timeline"), vec2(0.0, 520.0), 660.0, |ui| {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(tl!("Timeline")).strong().color(t.text));
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if crate::icons::button(ui, "x", 20.0, false, tl!("Close")).clicked() {
-                    close = true;
-                }
-            });
-        });
-        ui.separator();
+        // the title folds the panel to its title row (remembered, crate::folds)
+        let (closed, open) = crate::analysis_ui::title_row_open(ui, tl!("Timeline"));
+        close = closed;
+        if !open {
+            return;
+        }
 
         if !have_doc {
             ui.weak(tl!("Open a document to use the timeline."));

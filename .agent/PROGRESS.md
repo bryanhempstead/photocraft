@@ -7,6 +7,26 @@ and the Adobe colour data on his Mac are allowed at runtime, nothing Adobe commi
 Commit on `main`; `origin` = github.com/bryanhempstead/photocraft (his fork), `upstream` = storytold.
 
 ## Open
+- [ ] (folds agent, 2026-11-23, branch `agent-folds` in ~/crafts/pc-folds, not merged) **Every list / section folds,
+  remembered** (Bryan's rule, SOUL 11-23). One map `Preferences.folds` (engine prefs.rs, section id → open, saved and
+  three-way merged with the preferences), mirrored into the egui context each frame (`crate::folds::sync` at the top
+  of `ui`); helpers `folds::header(_or)` / `label` / `label_with` / `chevron` / `toggle_on_click(_or)`; commands
+  `ui.fold {id, open?}` (no open = toggle) and `ui.folds` (folded, saved, onScreen) in `UI_COMMANDS`. Default open
+  (preset folders after the first, Camera Raw sections after Light and action steps keep starting closed). Made
+  remembered: Properties sections, Document Properties, preset panel folders, Brushes panel + brush picker groups
+  (shared fold; `brushes_panel.collapsed` stays as a session override), action sets, Camera Raw sections. Made
+  foldable: Swatches user groups, Preferences › Performance › Graphics, Keyboard Shortcuts editor menus, Export As
+  (File Settings, Image Size), Save for Web Image Size, Print groups, New Document presets / details, Measurement Log,
+  Notes, Modifier Keys, Timeline and Glyphs panels (title row), Style Options, Check Spelling suggestions, Layer
+  Style ▸ Styles groups, Mixer Brush options, Adjustments grid, Liquify option groups, Adaptive Wide Angle
+  Correction / Constraints, Fill Blending, Camera Raw sub-groups (white balance, vignetting, grain, sharpening, noise,
+  grading wheels). Checked, nothing to fold (no group headings; dock groups already fold): adjust and filter dialogs,
+  color range, smart objects, comps, channels, variables, plugins, jobs, gallery. Tests: `folds::tests` (command +
+  preferences save/load, folded sections hidden; `PHOTOCRAFT_TEST_SHOTS=<dir>` writes screenshots). Verified:
+  ui-egui --lib 818 green, clippy --all-targets -D warnings green, engine `prefs_usage` green, screenshots looked at
+  (Export As, Print). Left: merge; not tried in the running app; Swatches/Gradients/Patterns dock panels' own folders
+  use preset_panels (covered); Preferences dialog pages are pages, not folds.
+
 - [ ] (labels agent, 2026-11-23, branch `agent-labels` in ~/crafts/pc-labels, not merged) **Whole-word labels +
   color.** Bryan's rule (SOUL 11-23): labels spell every word out, lowercase, periods for spaces, "color" never
   "colour". Prefs sidebar shrt. → shortcuts., mouse row fwd. → forward. (the rest of PhotoCraft mirrors Photoshop's

@@ -722,7 +722,21 @@ mod tests {
         assert_eq!((app.title.as_str(), app.role), ("PhotoCraft", MenuRole::App));
         assert_eq!(
             ids(&app.children),
-            ["help.about", "---", "[Settings]", "[Language]", "[Appearance]", "---", "<Services>", "---", HIDE, "<HideOthers>", "<ShowAll>", "---", "file.exit"]
+            [
+                "help.about",
+                "---",
+                "[Settings]",
+                "[Language]",
+                "[Appearance]",
+                "---",
+                "<Services>",
+                "---",
+                HIDE,
+                "<HideOthers>",
+                "<ShowAll>",
+                "---",
+                "file.exit"
+            ]
         );
         let quit = l.bar.find("file.exit").unwrap();
         assert_eq!((quit.label.as_str(), quit.shortcut.as_deref()), ("Quit PhotoCraft", Some("Cmd+Q")));

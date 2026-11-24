@@ -320,63 +320,66 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
         let mut props = ui.new_child(egui::UiBuilder::new().max_rect(right.shrink2(vec2(14.0, 10.0))));
         egui::ScrollArea::vertical().id_salt("awa-props").show(&mut props, |ui| {
             ui.spacing_mut().item_spacing.y = 5.0;
-            widgets::section_label(ui, tl!("Correction"));
-            let mut model = d.params.model;
-            if widgets::dropdown(
-                ui,
-                "awa-model",
-                &mut model,
-                &[
-                    (WideModel::Auto, tl!("Auto")),
-                    (WideModel::Fisheye, tl!("Fisheye")),
-                    (WideModel::Perspective, tl!("Perspective")),
-                    (WideModel::FullSpherical, tl!("Full Spherical")),
-                ],
-                200.0,
-            ) {
-                d.params.model = model;
-                d.dirty = true;
-            }
-            let mut v = d.params.scale as f32;
-            if widgets::slider_row(ui, tl!("Scale"), &mut v, 50.0..=150.0, "%", None).changed() {
-                d.params.scale = v as f64;
-                d.dirty = true;
-            }
-            let mut v = d.params.focal_length as f32;
-            if widgets::slider_row(ui, tl!("Focal Length"), &mut v, 0.0..=200.0, "mm", None).changed() {
-                d.params.focal_length = v as f64;
-                d.dirty = true;
-            }
-            let mut v = d.params.crop_factor as f32;
-            if widgets::slider_row(ui, tl!("Crop Factor"), &mut v, 0.1..=10.0, "", None).changed() {
-                d.params.crop_factor = v as f64;
-                d.dirty = true;
+            if crate::folds::label(ui, "wide.angle.correction", "Correction") {
+                let mut model = d.params.model;
+                if widgets::dropdown(
+                    ui,
+                    "awa-model",
+                    &mut model,
+                    &[
+                        (WideModel::Auto, tl!("Auto")),
+                        (WideModel::Fisheye, tl!("Fisheye")),
+                        (WideModel::Perspective, tl!("Perspective")),
+                        (WideModel::FullSpherical, tl!("Full Spherical")),
+                    ],
+                    200.0,
+                ) {
+                    d.params.model = model;
+                    d.dirty = true;
+                }
+                let mut v = d.params.scale as f32;
+                if widgets::slider_row(ui, tl!("Scale"), &mut v, 50.0..=150.0, "%", None).changed() {
+                    d.params.scale = v as f64;
+                    d.dirty = true;
+                }
+                let mut v = d.params.focal_length as f32;
+                if widgets::slider_row(ui, tl!("Focal Length"), &mut v, 0.0..=200.0, "mm", None).changed() {
+                    d.params.focal_length = v as f64;
+                    d.dirty = true;
+                }
+                let mut v = d.params.crop_factor as f32;
+                if widgets::slider_row(ui, tl!("Crop Factor"), &mut v, 0.1..=10.0, "", None).changed() {
+                    d.params.crop_factor = v as f64;
+                    d.dirty = true;
+                }
             }
             widgets::hairline(ui);
-            widgets::section_label(ui, &crate::i18n::fmt(tl!("Constraints ({n})"), &[("n", &d.params.constraints.len().to_string())]));
-            let mut remove = None;
-            for (i, c) in d.params.constraints.iter_mut().enumerate() {
-                ui.horizontal(|ui| {
-                    ui.label(format!("{}", i + 1));
-                    let mut o = c.orientation;
-                    if widgets::dropdown(
-                        ui,
-                        &format!("awa-o-{i}"),
-                        &mut o,
-                        &[(Orientation::Free, tl!("Free")), (Orientation::Horizontal, tl!("Horizontal")), (Orientation::Vertical, tl!("Vertical"))],
-                        120.0,
-                    ) {
-                        c.orientation = o;
-                        d.dirty = true;
-                    }
-                    if widgets::secondary_button(ui, tl!("Delete"), 60.0).clicked() {
-                        remove = Some(i);
-                    }
-                });
-            }
-            if let Some(i) = remove {
-                d.params.constraints.remove(i);
-                d.dirty = true;
+            if crate::folds::label(ui, "wide.angle.constraints", &crate::i18n::fmt(tl!("Constraints ({n})"), &[("n", &d.params.constraints.len().to_string())]))
+            {
+                let mut remove = None;
+                for (i, c) in d.params.constraints.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{}", i + 1));
+                        let mut o = c.orientation;
+                        if widgets::dropdown(
+                            ui,
+                            &format!("awa-o-{i}"),
+                            &mut o,
+                            &[(Orientation::Free, tl!("Free")), (Orientation::Horizontal, tl!("Horizontal")), (Orientation::Vertical, tl!("Vertical"))],
+                            120.0,
+                        ) {
+                            c.orientation = o;
+                            d.dirty = true;
+                        }
+                        if widgets::secondary_button(ui, tl!("Delete"), 60.0).clicked() {
+                            remove = Some(i);
+                        }
+                    });
+                }
+                if let Some(i) = remove {
+                    d.params.constraints.remove(i);
+                    d.dirty = true;
+                }
             }
             widgets::hairline(ui);
             widgets::checkbox(ui, &mut d.preview, tl!("Preview"));

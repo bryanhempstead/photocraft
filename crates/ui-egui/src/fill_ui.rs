@@ -175,30 +175,31 @@ pub fn body(app: &PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) 
         _ => {}
     }
     ui.add_space(4.0);
-    crate::widgets::section_label(ui, "Blending");
     crate::widgets::hairline(ui);
-    ui.horizontal(|ui| {
-        label(ui, "Mode:");
-        let mut mode = get_str(f, "mode", "normal");
-        let opts: Vec<(String, &str)> = photocraft_color::BlendMode::LAYER_MODES.iter().map(|m| (mode_key(*m), m.label())).collect();
-        if crate::widgets::dropdown(ui, "fill-mode", &mut mode, &opts, 170.0) {
-            f.insert("mode".into(), json!(mode));
-        }
-    });
-    ui.horizontal(|ui| {
-        label(ui, "Opacity:");
-        let mut o = f.get("opacity").and_then(Value::as_f64).unwrap_or(100.0) as f32;
-        if crate::widgets::value_field(ui, &mut o, 0.0..=100.0, "%", 70.0).changed() {
-            f.insert("opacity".into(), json!(o.round()));
-        }
-    });
-    ui.horizontal(|ui| {
-        label(ui, "");
-        let mut on = f.get("preserveTransparency").and_then(Value::as_bool).unwrap_or(false);
-        if crate::widgets::checkbox(ui, &mut on, "Preserve Transparency").changed() {
-            f.insert("preserveTransparency".into(), json!(on));
-        }
-    });
+    if crate::folds::label(ui, "fill.blending", "Blending") {
+        ui.horizontal(|ui| {
+            label(ui, "Mode:");
+            let mut mode = get_str(f, "mode", "normal");
+            let opts: Vec<(String, &str)> = photocraft_color::BlendMode::LAYER_MODES.iter().map(|m| (mode_key(*m), m.label())).collect();
+            if crate::widgets::dropdown(ui, "fill-mode", &mut mode, &opts, 170.0) {
+                f.insert("mode".into(), json!(mode));
+            }
+        });
+        ui.horizontal(|ui| {
+            label(ui, "Opacity:");
+            let mut o = f.get("opacity").and_then(Value::as_f64).unwrap_or(100.0) as f32;
+            if crate::widgets::value_field(ui, &mut o, 0.0..=100.0, "%", 70.0).changed() {
+                f.insert("opacity".into(), json!(o.round()));
+            }
+        });
+        ui.horizontal(|ui| {
+            label(ui, "");
+            let mut on = f.get("preserveTransparency").and_then(Value::as_bool).unwrap_or(false);
+            if crate::widgets::checkbox(ui, &mut on, "Preserve Transparency").changed() {
+                f.insert("preserveTransparency".into(), json!(on));
+            }
+        });
+    }
 }
 
 /// The `mode` param naming a blend mode (`"normal"`, `"colorBurn"`…), which the engine parses.
