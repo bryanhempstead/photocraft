@@ -268,6 +268,13 @@ mod tests {
         assert!(old.folds.is_empty());
     }
 
+    /// With `PHOTOCRAFT_TEST_SHOTS=<dir>`, a screenshot of the harness as `<dir>/<name>`.
+    fn shot(h: &mut Harness<'static, PhotocraftApp>, name: &str) {
+        if let Some(dir) = std::env::var_os("PHOTOCRAFT_TEST_SHOTS") {
+            h.render().unwrap().save(std::path::Path::new(&dir).join(name)).unwrap();
+        }
+    }
+
     fn harness() -> Harness<'static, PhotocraftApp> {
         let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
             PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
@@ -292,6 +299,7 @@ mod tests {
         h.run_steps(6);
         assert!(h.query_by_label("Format").is_none(), "File Settings folded");
         assert!(h.query_by_label("Scale").is_some(), "Image Size still open");
+        shot(&mut h, "folds-export-as.png");
         assert_eq!(h.state().session.prefs().folds.get("export.as.file.settings"), Some(&false), "remembered");
         let ctx = h.ctx.clone();
         let r = crate::menus::invoke(h.state_mut(), &ctx, "ui.folds", json!({})).unwrap();
@@ -309,5 +317,6 @@ mod tests {
         h.run_steps(6);
         assert!(h.query_by_label("Copies").is_none(), "Printer Setup folded");
         assert!(h.query_by_label("Color Management").is_some(), "the next group's title stays");
+        shot(&mut h, "folds-print.png");
     }
 }
