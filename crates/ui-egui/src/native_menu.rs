@@ -557,6 +557,18 @@ pub fn photocraft_layout(items: &[MenuItem], lang: Lang) -> Layout {
     bar.tag_menu("Window", MenuRole::Window);
     bar.tag_menu("Help", MenuRole::Help);
     let mut layout = mac_layout(&bar, lang);
+    // Language, right after Settings: English is the only one installed (Bryan, 11-23 — the other
+    // languages' files are gone to save space; the option stays and shows what is there)
+    if let Some(app_menu) = layout.bar.menus.iter_mut().find(|m| m.role == MenuRole::App) {
+        let settings = |n: &Node| match n {
+            Node::Item(it) => it.role == Some(ItemRole::Settings),
+            Node::Submenu { role, .. } => *role == Some(ItemRole::Settings),
+            _ => false,
+        };
+        let at = app_menu.children.iter().position(settings).map_or(0, |i| i + 1);
+        let english = Item { id: "app.language.en".into(), label: "English".into(), shortcut: None, enabled: true, checked: Some(true), role: None };
+        app_menu.children.insert(at, Node::Submenu { label: "Language".into(), children: vec![Node::Item(english)], role: None });
+    }
     translate(&mut layout.bar, lang);
     layout
 }
@@ -710,7 +722,7 @@ mod tests {
         assert_eq!((app.title.as_str(), app.role), ("PhotoCraft", MenuRole::App));
         assert_eq!(
             ids(&app.children),
-            ["help.about", "---", "[Settings]", "[Appearance]", "---", "<Services>", "---", HIDE, "<HideOthers>", "<ShowAll>", "---", "file.exit"]
+            ["help.about", "---", "[Settings]", "[Language]", "[Appearance]", "---", "<Services>", "---", HIDE, "<HideOthers>", "<ShowAll>", "---", "file.exit"]
         );
         let quit = l.bar.find("file.exit").unwrap();
         assert_eq!((quit.label.as_str(), quit.shortcut.as_deref()), ("Quit PhotoCraft", Some("Cmd+Q")));

@@ -299,6 +299,7 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
             Ok(Value::Null)
         }
         // The app menu's Language items, from scripts written before PhotoCraft went English only.
+        "app.language.en" => Ok(json!("en")),
         i if i.starts_with("app.language.") => Err(ENGLISH_ONLY.into()),
         "edit.search" => {
             app.ui.palette_open = !app.ui.palette_open;
