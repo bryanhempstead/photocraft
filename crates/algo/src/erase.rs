@@ -125,7 +125,7 @@ mod tests {
                 let p = h.pixel(5, 5);
                 let a = fmt.mode.color_channels();
                 assert!((p[a] - 0.5).abs() < 0.01, "{fmt:?} {p:?}");
-                assert!((p[0] - before[0]).abs() < 1e-6, "colour kept {fmt:?}");
+                assert!((p[0] - before[0]).abs() < 1e-6, "color kept {fmt:?}");
             }
         }
     }

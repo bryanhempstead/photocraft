@@ -48,7 +48,7 @@ fn flat_areas_cost_almost_nothing() {
     let bytes = encode(&img, Format::WebP, &lossy(80)).unwrap();
     assert!(bytes.len() < 1200, "{} bytes", bytes.len());
     let back = decode(&bytes).unwrap();
-    assert!(max_abs_diff(&img, &back) <= 3.0 / 255.0, "flat colour reproduced within rounding");
+    assert!(max_abs_diff(&img, &back) <= 3.0 / 255.0, "flat color reproduced within rounding");
 }
 
 #[test]

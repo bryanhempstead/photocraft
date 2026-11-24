@@ -243,22 +243,22 @@ pub fn apply_set(layer: &Layer, f: &Fill, canvas: Rect, p: &Value, fg: [f32; 4],
         }
     }
     if let Some(v) = p.get("stops") {
-        let arr = v.as_array().ok_or_else(|| bad(CMD, "`stops` is [[location, colour], …]"))?;
+        let arr = v.as_array().ok_or_else(|| bad(CMD, "`stops` is [[location, color], …]"))?;
         let mut new = Vec::with_capacity(arr.len());
         for s in arr {
-            let pair = s.as_array().filter(|a| a.len() == 2).ok_or_else(|| bad(CMD, "a stop is [location 0..1, colour]"))?;
+            let pair = s.as_array().filter(|a| a.len() == 2).ok_or_else(|| bad(CMD, "a stop is [location 0..1, color]"))?;
             let t = pair.first().and_then(Value::as_f64).map(|v| v as f32).filter(|v| v.is_finite()).ok_or_else(|| bad(CMD, "stop location is a number"))?;
             let c = pair
                 .get(1)
                 .and_then(|c| parse_color(c, fg, bg))
-                .ok_or_else(|| bad(CMD, "stop colour is \"#rrggbb\", [r,g,b,a], \"foreground\" or \"background\""))?;
+                .ok_or_else(|| bad(CMD, "stop color is \"#rrggbb\", [r,g,b,a], \"foreground\" or \"background\""))?;
             new.push((t.clamp(0.0, 1.0), c));
         }
         if new.len() < 2 {
-            return Err(bad(CMD, "a gradient needs at least 2 colour stops"));
+            return Err(bad(CMD, "a gradient needs at least 2 color stops"));
         }
         if new.len() > 1024 {
-            return Err(bad(CMD, "too many colour stops (max 1024)"));
+            return Err(bad(CMD, "too many color stops (max 1024)"));
         }
         new.sort_by(|a, b| a.0.total_cmp(&b.0));
         if new.len() != stops.len() {
@@ -442,28 +442,28 @@ pub fn apply_stop(f: &Fill, p: &Value, fg: [f32; 4], bg: [f32; 4]) -> Result<Fil
             }
             v.push((t, c, 0.5));
             if v.len() > 1024 {
-                return Err(bad(CMD, "too many colour stops (max 1024)"));
+                return Err(bad(CMD, "too many color stops (max 1024)"));
             }
         }
         "move" => {
             let i = index()?;
             let t = location()?;
-            v.get_mut(i).ok_or_else(|| bad(CMD, format!("no colour stop {i}")))?.0 = t;
+            v.get_mut(i).ok_or_else(|| bad(CMD, format!("no color stop {i}")))?.0 = t;
         }
         "delete" => {
             let i = index()?;
             if i >= v.len() {
-                return Err(bad(CMD, format!("no colour stop {i}")));
+                return Err(bad(CMD, format!("no color stop {i}")));
             }
             if v.len() <= 2 {
-                return Err(bad(CMD, "a gradient keeps at least 2 colour stops"));
+                return Err(bad(CMD, "a gradient keeps at least 2 color stops"));
             }
             v.remove(i);
         }
         "color" => {
             let i = index()?;
             let c = p.get("color").and_then(|c| parse_color(c, fg, bg)).ok_or_else(|| bad(CMD, "missing or bad `color`"))?;
-            v.get_mut(i).ok_or_else(|| bad(CMD, format!("no colour stop {i}")))?.1 = c;
+            v.get_mut(i).ok_or_else(|| bad(CMD, format!("no color stop {i}")))?.1 = c;
         }
         "midpoint" => {
             let i = index()?;
@@ -570,7 +570,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Edit Gradient Stop",
             menu: &[],
             shortcut: None,
-            params: r##"{"layer":id?,"action":"add|move|delete|color|opacity|midpoint","kind":"color|opacity"="color","index":stop (midpoint: segment) number,"location":0..1 (midpoint: of the segment),"color":"#rrggbb"|[r,g,b,a]|"foreground"|"background" (add: default the colour there),"opacity":0..100} → the gradient"##,
+            params: r##"{"layer":id?,"action":"add|move|delete|color|opacity|midpoint","kind":"color|opacity"="color","index":stop (midpoint: segment) number,"location":0..1 (midpoint: of the segment),"color":"#rrggbb"|[r,g,b,a]|"foreground"|"background" (add: default the color there),"opacity":0..100} → the gradient"##,
             enabled: has_gradient_fill,
             run: stop,
             journal: true,

@@ -248,7 +248,7 @@ mod tests {
             ..Default::default()
         };
         apply_color_replacement(&mut s, &stroke(), &rs, None, false);
-        assert!(s.rgba(20, 20)[0] > 0.3 && s.rgba(70, 20)[0] > s.rgba(70, 20)[1], "both halves recoloured {:?} {:?}", s.rgba(20, 20), s.rgba(70, 20));
+        assert!(s.rgba(20, 20)[0] > 0.3 && s.rgba(70, 20)[0] > s.rgba(70, 20)[1], "both halves recolored {:?} {:?}", s.rgba(20, 20), s.rgba(70, 20));
         // Background swatch = white: nothing matches.
         let mut s2 = setup(PixelFormat::RGBA8);
         let rs2 = ReplaceSettings { sampling: Sampling::BackgroundSwatch, background: [1.0; 4], ..rs };

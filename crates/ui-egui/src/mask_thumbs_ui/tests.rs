@@ -139,7 +139,7 @@ fn channels_list_the_layer_mask_and_keep_the_aspect() {
     let mut h = harness(s, 1, 1.0, 290.0);
     let rows = crate::channels_panel::recorded(&h.ctx);
     let names: Vec<_> = rows.iter().map(|(n, _)| n.as_str()).collect();
-    assert_eq!(names, ["RGB", "Red", "Green", "Blue", "Masked Mask"], "the mask is a temporary row below the colour channels");
+    assert_eq!(names, ["RGB", "Red", "Green", "Blue", "Masked Mask"], "the mask is a temporary row below the color channels");
     for (n, r) in &rows {
         assert!((r.width() / r.height() - 2.0).abs() < 0.05, "{n}: 2:1 thumbnail, got {r:?}");
     }

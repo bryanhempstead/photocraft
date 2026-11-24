@@ -258,7 +258,7 @@ fn smudge_moves_colour_along_the_stroke() {
         assert!(rgba(&s, 36, 2)[1] > 0.99, "off-stroke untouched");
         s.execute("tools.setColors", json!({"foreground": "#0000ff"})).unwrap();
         s.execute("paint.smudge", json!({"points": [[80, 25], [95, 25]], "size": 6, "hardness": 100, "fingerPainting": true})).unwrap();
-        assert!(rgba(&s, 81, 25)[0] < 0.7, "finger painting lays down the foreground colour");
+        assert!(rgba(&s, 81, 25)[0] < 0.7, "finger painting lays down the foreground color");
     }
 }
 
@@ -561,7 +561,7 @@ fn smudge_across_a_transparent_edge_has_no_dark_fringe() {
                 assert!(p[0] > 0.97 && (p[1] - 0.8).abs() < 0.03, "depth {depth} x {x}: {p:?}");
             }
         }
-        assert!(n > 5, "depth {depth}: colour dragged into the transparent area");
+        assert!(n > 5, "depth {depth}: color dragged into the transparent area");
     }
 }
 
@@ -793,7 +793,7 @@ fn content_aware_move_structure_and_color_shape_the_result() {
         (94..102).map(|x| rgba(&s, x, 28)[0]).sum::<f32>() / 8.0
     };
     let (kept, fitted) = (mean(0), mean(10));
-    assert!((kept - 0.8).abs() < 1e-3, "color 0 keeps the colour: {kept}");
+    assert!((kept - 0.8).abs() < 1e-3, "color 0 keeps the color: {kept}");
     assert!(fitted < 0.3, "color 10 adapts to the dark surroundings: {fitted}");
 }
 

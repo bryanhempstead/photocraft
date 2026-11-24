@@ -567,14 +567,14 @@ fn decode_ifd(f: &File<'_>, dir: &Ifd, limits: &Limits) -> Result<Image, CodecEr
         tiff::ColorType::RGBA(_) => (ChannelLayout::Rgba, 4),
         tiff::ColorType::CMYK(_) => (ChannelLayout::Cmyk, 4),
         tiff::ColorType::CMYKA(_) => (ChannelLayout::CmykA, 5),
-        other => return Err(CodecError::unsupported(F, format!("colour type {other:?}"))),
+        other => return Err(CodecError::unsupported(F, format!("color type {other:?}"))),
     };
     let chunk_spp = if planar { 1 } else { chunk_spp };
     if matches!(src, Src::Bits(_)) && (out_layout.channels() > 1 || spp != 1) && palette.is_none() {
         return Err(CodecError::unsupported(F, format!("{bits}-bit samples with {spp} samples per pixel")));
     }
     if (!planar && palette.is_none() && chunk_spp < out_layout.channels()) || (planar && out_layout.channels() as u64 > spp) {
-        return Err(err("fewer samples than the colour type needs"));
+        return Err(err("fewer samples than the color type needs"));
     }
     let out = match (&palette, src) {
         (Some(_), Src::U16) => SampleType::U16,

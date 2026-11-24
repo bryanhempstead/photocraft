@@ -406,7 +406,7 @@ impl ColorState {
         let transform = if source.content_hash() == monitor.content_hash() {
             None
         } else {
-            let t = Transform::new(&source, &monitor, DISPLAY_INTENT, DISPLAY_BPC).map_err(|e| EngineError::Other(format!("colour management: {e}")))?;
+            let t = Transform::new(&source, &monitor, DISPLAY_INTENT, DISPLAY_BPC).map_err(|e| EngineError::Other(format!("color management: {e}")))?;
             (!is_identity(&t, space == ColorSpace::Gray)).then(|| Arc::new(t))
         };
         let d = Arc::new(CanvasDisplay {

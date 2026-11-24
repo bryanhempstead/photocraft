@@ -732,10 +732,10 @@ pub fn open_shortcuts(app: &mut PhotocraftApp, tab: u64) -> u64 {
 /// Open the Embedded Profile Mismatch prompt for the active document.
 pub fn open_mismatch(app: &mut PhotocraftApp, report: &Value) -> u64 {
     let msg = if report.get("missing").and_then(Value::as_bool) == Some(true) {
-        format!("The document does not have an embedded colour profile. Working space: {}.", report["working"].as_str().unwrap_or("?"))
+        format!("The document does not have an embedded color profile. Working space: {}.", report["working"].as_str().unwrap_or("?"))
     } else {
         format!(
-            "The document has an embedded colour profile that does not match the working space.\nEmbedded: {}\nWorking: {}",
+            "The document has an embedded color profile that does not match the working space.\nEmbedded: {}\nWorking: {}",
             report["embedded"].as_str().unwrap_or("?"),
             report["working"].as_str().unwrap_or("?")
         )
@@ -761,7 +761,7 @@ pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Valu
         "prefs" => {
             f.insert("__gpuInfo".into(), json!(app.perf.gpu_info.lines()));
             prefs_body(ui, f);
-            // The shrt. entry opens the shortcut editor (keys, mouse buttons, Photoshop import).
+            // The shortcuts. entry opens the shortcut editor (keys, mouse buttons, Photoshop import).
             if f.remove("__openShortcuts").is_some() {
                 open_shortcuts(app, 0);
             }
@@ -881,7 +881,7 @@ fn prefs_body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
             if resp.hovered() {
                 ui.painter().rect_filled(rect, t.radius_sm, t.hover);
             }
-            ui.painter().text(rect.left_center() + vec2(8.0, 0.0), egui::Align2::LEFT_CENTER, "shrt.", crate::theme::medium(12.5), t.text_dim);
+            ui.painter().text(rect.left_center() + vec2(8.0, 0.0), egui::Align2::LEFT_CENTER, "shortcuts.", crate::theme::medium(12.5), t.text_dim);
             if resp.on_hover_text(tl!("Keyboard shortcuts, mouse buttons, import from Photoshop")).clicked() {
                 f.insert("__openShortcuts".into(), json!(true));
             }
@@ -1303,7 +1303,7 @@ fn mouse_rows(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         ui.label(RichText::new("mouse.").color(t.text_dim));
-        for (button, label) in [("MouseBack", "back."), ("MouseForward", "fwd.")] {
+        for (button, label) in [("MouseBack", "back."), ("MouseForward", "forward.")] {
             ui.add_space(8.0);
             ui.label(RichText::new(label).color(t.text_faint));
             let mut id = mouse.get(button).cloned().unwrap_or_default();

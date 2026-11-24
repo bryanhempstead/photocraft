@@ -217,7 +217,7 @@ fn import_grd(s: &mut Session, p: &Value) -> Result<Value> {
         warnings.push(format!("{noise} noise gradients are not supported and were skipped"));
     }
     if midpoints {
-        warnings.push("colour and opacity midpoints other than 50 % are drawn at 50 %".to_string());
+        warnings.push("color and opacity midpoints other than 50 % are drawn at 50 %".to_string());
     }
     if items.is_empty() {
         return Err(bad(cmd, "the file holds no gradients PhotoCraft can use (noise gradients only)"));

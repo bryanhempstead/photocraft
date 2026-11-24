@@ -520,7 +520,7 @@ mod tests {
                     }
                 }
             }
-            assert!(smudged > 50, "{fmt:?}: colour was dragged into the transparent area");
+            assert!(smudged > 50, "{fmt:?}: color was dragged into the transparent area");
             // And at partial opacity the mix back is premultiplied too.
             let mut s = Surface::new(fmt);
             s.fill_rect(Rect::new(0, 0, 30, 40), &[1.0, 0.8, 0.0, 1.0]);

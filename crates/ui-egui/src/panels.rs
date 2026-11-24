@@ -286,10 +286,10 @@ fn color_chips(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     }
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
-        if icons::button(ui, "arrow-left-right", 18.0, false, tl!("Swap colours (X)")).clicked() {
+        if icons::button(ui, "arrow-left-right", 18.0, false, tl!("Swap colors (X)")).clicked() {
             let _ = app.run("tools.swapColors", json!({}));
         }
-        if icons::button(ui, "contrast", 18.0, false, tl!("Default colours (D)")).clicked() {
+        if icons::button(ui, "contrast", 18.0, false, tl!("Default colors (D)")).clicked() {
             let _ = app.run("tools.defaultColors", json!({}));
         }
     });
@@ -849,7 +849,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                     Tool::Eyedropper => hint(
                         ui,
                         &crate::i18n::fmt(
-                            tl!("Click to sample the foreground colour  ·  {key}-click for background"),
+                            tl!("Click to sample the foreground color  ·  {key}-click for background"),
                             &[("key", &crate::shortcuts::pretty("Alt"))],
                         ),
                     ),
@@ -900,7 +900,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         ),
                     ),
                     Tool::Gradient => hint(ui, tl!("Drag to draw a gradient")),
-                    Tool::PaintBucket => hint(ui, tl!("Click to fill similar colours")),
+                    Tool::PaintBucket => hint(ui, tl!("Click to fill similar colors")),
                     Tool::Type | Tool::VerticalType => hint(ui, tl!("Click to add text")),
                     // Retouching and smart-selection tools draw their bar in `retouch_ui::options_bar`.
                     _ => {}

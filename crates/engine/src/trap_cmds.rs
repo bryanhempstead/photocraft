@@ -48,7 +48,7 @@ pub fn specs() -> Vec<CommandSpec> {
         label: "Trap…",
         menu: &["Image"],
         shortcut: None,
-        params: r#"{width:px>=1=1} → {trapped,width}: spread inks at colour edges (CMYK only)"#,
+        params: r#"{width:px>=1=1} → {trapped,width}: spread inks at color edges (CMYK only)"#,
         enabled,
         journal: true,
         run: |s, p| trap(s, p),

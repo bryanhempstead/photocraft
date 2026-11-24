@@ -51,7 +51,7 @@ fn reset_one_colour_setting() {
     s.execute("prefs.set", json!({"values": {"colorSettings.bpc": false, "colorSettings.workingRgb": "display-p3"}})).unwrap();
     assert_eq!(s.execute("prefs.reset", json!({"path": "colorSettings.bpc"})).unwrap(), json!(true));
     assert!(s.color.settings.bpc);
-    assert_eq!(s.color.settings.working_rgb, "display-p3", "other colour settings are untouched");
+    assert_eq!(s.color.settings.working_rgb, "display-p3", "other color settings are untouched");
     s.execute("prefs.reset", json!({"path": "colorSettings.workingRgb"})).unwrap();
     assert_eq!(s.color.settings, crate::color_cmds::ColorSettings::default());
     assert!(s.execute("prefs.reset", json!({"path": "colorSettings.notAField"})).is_err());

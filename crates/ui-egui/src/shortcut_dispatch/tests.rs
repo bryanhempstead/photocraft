@@ -274,9 +274,9 @@ fn common_shortcuts_work_after_clicking_panels() {
             // The colour keys from the tools panel tooltips: X swaps, D resets.
             let fg = h.state().session.tools.foreground;
             press(&mut h, "X");
-            assert_eq!(h.state().session.tools.background, fg, "{place:?}: X swaps colours");
+            assert_eq!(h.state().session.tools.background, fg, "{place:?}: X swaps colors");
             press(&mut h, "D");
-            assert_eq!(h.state().session.tools.foreground, [0.0, 0.0, 0.0, 1.0], "{place:?}: D resets colours");
+            assert_eq!(h.state().session.tools.foreground, [0.0, 0.0, 0.0, 1.0], "{place:?}: D resets colors");
         }
         press(&mut h, "Cmd+G");
         let group = h.state().session.active().unwrap().active_layer.and_then(|id| h.state().session.active().unwrap().doc.layer(id).cloned());
