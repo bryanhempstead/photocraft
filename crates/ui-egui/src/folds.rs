@@ -125,14 +125,20 @@ pub fn header_or(ui: &mut Ui, id: &str, title: &str, default: bool) -> bool {
 /// as wide as its text. Returns whether the group is open.
 pub fn label(ui: &mut Ui, id: &str, title: &str) -> bool {
     let t = Tokens::get(ui.ctx());
-    let galley = ui.painter().layout_no_wrap(tl!(title).to_string(), theme::medium(11.5), t.text_faint);
+    label_with(ui, id, title, theme::medium(11.5), t.text_faint)
+}
+
+/// [`label`] in another font and colour (a group title in a list: semibold, the text colour).
+pub fn label_with(ui: &mut Ui, id: &str, title: &str, font: egui::FontId, color: egui::Color32) -> bool {
+    let t = Tokens::get(ui.ctx());
+    let galley = ui.painter().layout_no_wrap(tl!(title).to_string(), font, color);
     let (r, resp) = ui.allocate_exact_size(vec2(galley.size().x + 18.0, galley.size().y.max(18.0)), Sense::click());
     if resp.hovered() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
     let open = toggle_on_click(ui, &resp, id);
     paint_chevron(ui, pos2(r.left() + 6.0, r.center().y), open, if resp.hovered() { t.text } else { t.text_faint });
-    ui.painter().galley(pos2(r.left() + 18.0, r.center().y - galley.size().y / 2.0), galley, t.text_faint);
+    ui.painter().galley(pos2(r.left() + 18.0, r.center().y - galley.size().y / 2.0), galley, color);
     let label = title.to_string();
     resp.widget_info(move || egui::WidgetInfo::selected(egui::WidgetType::CollapsingHeader, true, open, &label));
     note_drawn(ui.ctx(), id, title);

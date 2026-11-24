@@ -475,20 +475,21 @@ fn web_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Valu
                 );
             });
             ui.add_space(8.0);
-            ui.label(egui::RichText::new(tl!("Image Size")).font(crate::theme::semibold(12.0)).color(t.text));
-            number(ui, f, "percent", tl!("Percent"), 1.0..=1000.0, "%", 100.0);
-            let pct = n(f, "percent", 100.0) / 100.0;
-            ui.label(
-                egui::RichText::new(format!("W: {} px   H: {} px", (f64::from(doc.size.width) * pct).round(), (f64::from(doc.size.height) * pct).round()))
-                    .color(t.text_dim)
-                    .size(11.5),
-            );
-            let nslices = photocraft_doc::slices::resolve(&doc).len();
-            if !doc.slices.is_empty() {
-                ui.add_space(6.0);
-                ui.label(egui::RichText::new(format!("{nslices} slices")).color(t.text_dim));
-                check(ui, f, "html", tl!("Save HTML and Images"), true);
-                dropdown_str(ui, "web-slices", f, "slices", &[("all", tl!("All Slices")), ("user", tl!("All User Slices"))], 150.0);
+            if crate::folds::label_with(ui, "save.for.web.image.size", "Image Size", crate::theme::semibold(12.0), t.text) {
+                number(ui, f, "percent", tl!("Percent"), 1.0..=1000.0, "%", 100.0);
+                let pct = n(f, "percent", 100.0) / 100.0;
+                ui.label(
+                    egui::RichText::new(format!("W: {} px   H: {} px", (f64::from(doc.size.width) * pct).round(), (f64::from(doc.size.height) * pct).round()))
+                        .color(t.text_dim)
+                        .size(11.5),
+                );
+                let nslices = photocraft_doc::slices::resolve(&doc).len();
+                if !doc.slices.is_empty() {
+                    ui.add_space(6.0);
+                    ui.label(egui::RichText::new(format!("{nslices} slices")).color(t.text_dim));
+                    check(ui, f, "html", tl!("Save HTML and Images"), true);
+                    dropdown_str(ui, "web-slices", f, "slices", &[("all", tl!("All Slices")), ("user", tl!("All User Slices"))], 150.0);
+                }
             }
         });
     });
@@ -618,95 +619,101 @@ fn print_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Va
         ui.add_space(12.0);
         ui.vertical(|ui| {
             ui.set_width(340.0);
+            // each group folds (remembered, crate::folds)
             let head = |ui: &mut egui::Ui, s: &str| {
                 ui.add_space(4.0);
-                ui.label(egui::RichText::new(s).font(crate::theme::semibold(12.0)).color(t.text));
+                crate::folds::label_with(ui, &format!("print.{}", crate::folds::slug(s)), s, crate::theme::semibold(12.0), t.text)
             };
-            head(ui, tl!("Printer Setup"));
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Printer")).color(t.text_dim));
-                let mut pr = s(f, "printer", "");
-                if ui.add(egui::TextEdit::singleline(&mut pr).hint_text(tl!("Default printer")).desired_width(180.0)).changed() {
-                    f.insert("printer".into(), json!(pr));
-                }
-            });
-            number(ui, f, "copies", tl!("Copies"), 1.0..=999.0, "", 1.0);
-            ui.horizontal(|ui| {
-                let papers: Vec<(&str, &str)> = photocraft_engine::print_cmds::PAPERS.iter().map(|p| (p.0, p.0)).collect();
-                dropdown_str(ui, "print-paper", f, "paper", &papers, 110.0);
-                dropdown_str(ui, "print-orient", f, "orientation", &[("portrait", tl!("Portrait")), ("landscape", tl!("Landscape"))], 110.0);
-            });
-            head(ui, tl!("Color Management"));
-            dropdown_str(
-                ui,
-                "print-color",
-                f,
-                "colorHandling",
-                &[
-                    ("printerManages", tl!("Printer Manages Colors")),
-                    ("photocraftManages", tl!("PhotoCraft Manages Colors")),
-                    ("noColorManagement", tl!("No Color Management")),
-                ],
-                240.0,
-            );
-            if s(f, "colorHandling", "") == "photocraftManages" {
+            if head(ui, tl!("Printer Setup")) {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(tl!("Printer")).color(t.text_dim));
+                    let mut pr = s(f, "printer", "");
+                    if ui.add(egui::TextEdit::singleline(&mut pr).hint_text(tl!("Default printer")).desired_width(180.0)).changed() {
+                        f.insert("printer".into(), json!(pr));
+                    }
+                });
+                number(ui, f, "copies", tl!("Copies"), 1.0..=999.0, "", 1.0);
+                ui.horizontal(|ui| {
+                    let papers: Vec<(&str, &str)> = photocraft_engine::print_cmds::PAPERS.iter().map(|p| (p.0, p.0)).collect();
+                    dropdown_str(ui, "print-paper", f, "paper", &papers, 110.0);
+                    dropdown_str(ui, "print-orient", f, "orientation", &[("portrait", tl!("Portrait")), ("landscape", tl!("Landscape"))], 110.0);
+                });
+            }
+            if head(ui, tl!("Color Management")) {
                 dropdown_str(
                     ui,
-                    "print-profile",
+                    "print-color",
                     f,
-                    "printerProfile",
+                    "colorHandling",
                     &[
-                        ("coated-cmyk", tl!("Coated CMYK")),
-                        ("srgb", "sRGB IEC61966-2.1"),
-                        ("adobe-rgb-compat", tl!("Adobe RGB (1998) compatible")),
-                        ("display-p3", tl!("Display P3")),
-                        ("gray-gamma-2.2", tl!("Gray Gamma 2.2")),
+                        ("printerManages", tl!("Printer Manages Colors")),
+                        ("photocraftManages", tl!("PhotoCraft Manages Colors")),
+                        ("noColorManagement", tl!("No Color Management")),
                     ],
                     240.0,
                 );
-                ui.horizontal(|ui| {
+                if s(f, "colorHandling", "") == "photocraftManages" {
                     dropdown_str(
                         ui,
-                        "print-intent",
+                        "print-profile",
                         f,
-                        "intent",
+                        "printerProfile",
                         &[
-                            ("perceptual", tl!("Perceptual")),
-                            ("relative", tl!("Relative Colorimetric")),
-                            ("saturation", tl!("Saturation")),
-                            ("absolute", tl!("Absolute Colorimetric")),
+                            ("coated-cmyk", tl!("Coated CMYK")),
+                            ("srgb", "sRGB IEC61966-2.1"),
+                            ("adobe-rgb-compat", tl!("Adobe RGB (1998) compatible")),
+                            ("display-p3", tl!("Display P3")),
+                            ("gray-gamma-2.2", tl!("Gray Gamma 2.2")),
                         ],
-                        170.0,
+                        240.0,
                     );
-                    check(ui, f, "bpc", tl!("Black Point Compensation"), true);
-                });
+                    ui.horizontal(|ui| {
+                        dropdown_str(
+                            ui,
+                            "print-intent",
+                            f,
+                            "intent",
+                            &[
+                                ("perceptual", tl!("Perceptual")),
+                                ("relative", tl!("Relative Colorimetric")),
+                                ("saturation", tl!("Saturation")),
+                                ("absolute", tl!("Absolute Colorimetric")),
+                            ],
+                            170.0,
+                        );
+                        check(ui, f, "bpc", tl!("Black Point Compensation"), true);
+                    });
+                }
             }
-            head(ui, tl!("Position and Size"));
-            check(ui, f, "center", tl!("Center"), true);
-            if !b(f, "center", true) {
+            if head(ui, tl!("Position and Size")) {
+                check(ui, f, "center", tl!("Center"), true);
+                if !b(f, "center", true) {
+                    ui.horizontal(|ui| {
+                        number(ui, f, "top", tl!("Top"), 0.0..=100.0, "in", 0.0);
+                        number(ui, f, "left", tl!("Left"), 0.0..=100.0, "in", 0.0);
+                    });
+                }
+                check(ui, f, "scaleToFit", tl!("Scale to Fit Media"), false);
+                if !b(f, "scaleToFit", false) {
+                    number(ui, f, "scale", tl!("Scale"), 1.0..=1000.0, "%", 100.0);
+                }
+            }
+            if head(ui, tl!("Printing Marks")) {
                 ui.horizontal(|ui| {
-                    number(ui, f, "top", tl!("Top"), 0.0..=100.0, "in", 0.0);
-                    number(ui, f, "left", tl!("Left"), 0.0..=100.0, "in", 0.0);
+                    check(ui, f, "cornerCropMarks", tl!("Corner Crop Marks"), false);
+                    check(ui, f, "centerCropMarks", tl!("Center Crop Marks"), false);
+                });
+                ui.horizontal(|ui| {
+                    check(ui, f, "registrationMarks", tl!("Registration Marks"), false);
+                    check(ui, f, "description", tl!("Description"), false);
+                    check(ui, f, "labels", tl!("Labels"), false);
                 });
             }
-            check(ui, f, "scaleToFit", tl!("Scale to Fit Media"), false);
-            if !b(f, "scaleToFit", false) {
-                number(ui, f, "scale", tl!("Scale"), 1.0..=1000.0, "%", 100.0);
-            }
-            head(ui, tl!("Printing Marks"));
-            ui.horizontal(|ui| {
-                check(ui, f, "cornerCropMarks", tl!("Corner Crop Marks"), false);
-                check(ui, f, "centerCropMarks", tl!("Center Crop Marks"), false);
-            });
-            ui.horizontal(|ui| {
-                check(ui, f, "registrationMarks", tl!("Registration Marks"), false);
-                check(ui, f, "description", tl!("Description"), false);
-                check(ui, f, "labels", tl!("Labels"), false);
-            });
-            head(ui, tl!("Save as PDF"));
-            let mut out = s(f, "output", "");
-            if ui.add(egui::TextEdit::singleline(&mut out).hint_text(tl!("(print to the printer)")).desired_width(300.0)).changed() {
-                f.insert("output".into(), json!(out));
+            if head(ui, tl!("Save as PDF")) {
+                let mut out = s(f, "output", "");
+                if ui.add(egui::TextEdit::singleline(&mut out).hint_text(tl!("(print to the printer)")).desired_width(300.0)).changed() {
+                    f.insert("output".into(), json!(out));
+                }
             }
         });
     });

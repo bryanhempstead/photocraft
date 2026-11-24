@@ -187,17 +187,12 @@ pub fn windows(app: &mut PhotocraftApp, ctx: &egui::Context) {
             .default_pos(pos2((canvas.right() - 314.0 - 372.0).max(canvas.left() + 8.0), canvas.top() + 40.0))
             .show(ctx, |ui| {
                 ui.set_width(340.0);
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(tl!("Glyphs")).color(t.text).size(12.0).strong());
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if crate::icons::button(ui, "x", 20.0, false, tl!("Close")).clicked() {
-                            close = true;
-                        }
-                    });
-                });
-                crate::widgets::hairline(ui);
-                ui.add_space(4.0);
-                glyphs_panel(app, ui);
+                // the title folds the panel to its title row (remembered, crate::folds)
+                let (closed, open) = crate::analysis_ui::title_row_open(ui, tl!("Glyphs"));
+                close = closed;
+                if open {
+                    glyphs_panel(app, ui);
+                }
             });
         if close {
             app.ui.type_panels.glyphs = false;
@@ -346,14 +341,21 @@ fn options_editor(app: &mut PhotocraftApp, ui: &mut egui::Ui, paragraph: bool, s
     let mut set: Option<Value> = None;
     let mut clear: Vec<&str> = Vec::new();
     ui.add_space(4.0);
-    ui.horizontal(|ui| {
-        ui.label(RichText::new(tl!("Style Options")).color(t.text).size(11.5).strong());
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if crate::icons::button(ui, "x", 18.0, false, tl!("Close Style Options")).clicked() {
-                app.ui.type_panels.options = None;
-            }
-        });
-    });
+    let open = ui
+        .horizontal(|ui| {
+            // folds to its title (remembered, crate::folds)
+            let open = crate::folds::label_with(ui, "type.style.options", "Style Options", crate::theme::semibold(11.5), t.text);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if crate::icons::button(ui, "x", 18.0, false, tl!("Close Style Options")).clicked() {
+                    app.ui.type_panels.options = None;
+                }
+            });
+            open
+        })
+        .inner;
+    if !open {
+        return;
+    }
     // Name.
     let key = egui::Id::new(("style-name", paragraph, id));
     let mut name: String = ui.data(|d| d.get_temp(key)).unwrap_or_else(|| s["name"].as_str().unwrap_or("").to_string());
@@ -771,23 +773,26 @@ fn spelling_window(app: &mut PhotocraftApp, ctx: &egui::Context) {
                     ui.label(RichText::new(tl!("Change To:")).color(t.text_dim).size(11.5));
                     ui.add_enabled(item.is_some(), egui::TextEdit::singleline(&mut change_to).desired_width(240.0));
                     ui.add_space(4.0);
-                    ui.label(RichText::new(tl!("Suggestions:")).color(t.text_dim).size(11.5));
-                    egui::Frame::NONE.fill(t.field).corner_radius(CornerRadius::same(3)).inner_margin(egui::Margin::same(4)).show(ui, |ui| {
-                        ui.set_min_size(vec2(240.0, 110.0));
-                        egui::ScrollArea::vertical().id_salt("spell-sugg").max_height(110.0).show(ui, |ui| {
-                            for s in item.as_ref().and_then(|i| i["suggestions"].as_array()).into_iter().flatten() {
-                                let s = s.as_str().unwrap_or("");
-                                let r = ui.selectable_label(s == change_to, s);
-                                if r.clicked() {
-                                    change_to = s.to_string();
+                    // the suggestions list folds (remembered, crate::folds)
+                    let open = crate::folds::label_with(ui, "check.spelling.suggestions", "Suggestions:", egui::FontId::proportional(11.5), t.text_dim);
+                    if open {
+                        egui::Frame::NONE.fill(t.field).corner_radius(CornerRadius::same(3)).inner_margin(egui::Margin::same(4)).show(ui, |ui| {
+                            ui.set_min_size(vec2(240.0, 110.0));
+                            egui::ScrollArea::vertical().id_salt("spell-sugg").max_height(110.0).show(ui, |ui| {
+                                for s in item.as_ref().and_then(|i| i["suggestions"].as_array()).into_iter().flatten() {
+                                    let s = s.as_str().unwrap_or("");
+                                    let r = ui.selectable_label(s == change_to, s);
+                                    if r.clicked() {
+                                        change_to = s.to_string();
+                                    }
+                                    if r.double_clicked() {
+                                        change_to = s.to_string();
+                                        act = Some("change");
+                                    }
                                 }
-                                if r.double_clicked() {
-                                    change_to = s.to_string();
-                                    act = Some("change");
-                                }
-                            }
+                            });
                         });
-                    });
+                    }
                     ui.add_space(4.0);
                     if crate::widgets::checkbox(ui, &mut all_layers, tl!("Check All Layers")).changed() {
                         act = Some("relist");

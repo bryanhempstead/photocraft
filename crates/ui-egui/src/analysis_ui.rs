@@ -512,12 +512,14 @@ fn float_frame(t: &Tokens) -> egui::Frame {
         .inner_margin(egui::Margin::same(8))
 }
 
-/// Title row with a close button; returns true when closed.
-pub(crate) fn title_row(ui: &mut egui::Ui, title: &str) -> bool {
+/// Title row with a close button: (closed, open). The title folds the panel to this row
+/// (remembered, `crate::folds`, id `panel.<title>`).
+pub(crate) fn title_row_open(ui: &mut egui::Ui, title: &str) -> (bool, bool) {
     let t = Tokens::get(ui.ctx());
     let mut close = false;
+    let mut open = true;
     ui.horizontal(|ui| {
-        ui.label(RichText::new(tl!(&title)).color(t.text).size(12.0).strong());
+        open = crate::folds::label_with(ui, &format!("panel.{}", crate::folds::slug(title)), title, crate::theme::semibold(12.0), t.text);
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if crate::icons::button(ui, "x", 20.0, false, tl!("Close")).clicked() {
                 close = true;
@@ -526,7 +528,7 @@ pub(crate) fn title_row(ui: &mut egui::Ui, title: &str) -> bool {
     });
     crate::widgets::hairline(ui);
     ui.add_space(4.0);
-    close
+    (close, open)
 }
 
 /// A floating panel window; `movable` follows Window › Workspace › Lock Workspace.
@@ -558,7 +560,11 @@ pub fn windows(app: &mut PhotocraftApp, ctx: &egui::Context) {
         let mut sel = app.ui.analysis.log_selected.clone();
         let t = Tokens::get(ctx);
         panel_window(app, ctx, "measurement-log", tl!("Measurement Log"), vec2(-300.0, 470.0), 620.0, |ui| {
-            close = title_row(ui, tl!("Measurement Log"));
+            let (closed, open) = title_row_open(ui, tl!("Measurement Log"));
+            close = closed;
+            if !open {
+                return;
+            }
             ui.horizontal(|ui| {
                 if crate::widgets::secondary_button(ui, tl!("Record Measurements"), 0.0).clicked() {
                     act = Some(("record", Value::Null));
@@ -650,7 +656,11 @@ fn notes_panel(app: &mut PhotocraftApp, ctx: &egui::Context) {
     let mut delete = false;
     let t = Tokens::get(ctx);
     panel_window(app, ctx, "notes-panel", tl!("Notes"), vec2(-40.0, 300.0), 260.0, |ui| {
-        close = title_row(ui, tl!("Notes"));
+        let (closed, open) = title_row_open(ui, tl!("Notes"));
+        close = closed;
+        if !open {
+            return;
+        }
         match sel {
             None => {
                 ui.label(RichText::new(tl!("Click with the Note tool to add a note.")).color(t.text_dim).size(11.0));

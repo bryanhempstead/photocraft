@@ -200,142 +200,156 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
         // Left: preset grid.
         ui.vertical(|ui| {
             ui.set_width(520.0);
-            ui.label(RichText::new(crate::i18n::fmt(tl!("BLANK DOCUMENT PRESETS ({n})"), &[("n", &presets.len().to_string())])).size(11.0).color(t.text_faint));
-            ui.add_space(6.0);
-            let card = vec2(164.0, 112.0);
-            for row in presets.chunks(3) {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 8.0;
-                    for p in row {
-                        let (r, resp) = ui.allocate_exact_size(card, Sense::click());
-                        let on = chosen == p.0;
-                        ui.painter().rect_filled(
-                            r,
-                            t.radius,
+            if crate::folds::label_with(
+                ui,
+                "new.document.presets",
+                &crate::i18n::fmt(tl!("BLANK DOCUMENT PRESETS ({n})"), &[("n", &presets.len().to_string())]),
+                egui::FontId::proportional(11.0),
+                t.text_faint,
+            ) {
+                ui.add_space(6.0);
+                let card = vec2(164.0, 112.0);
+                for row in presets.chunks(3) {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 8.0;
+                        for p in row {
+                            let (r, resp) = ui.allocate_exact_size(card, Sense::click());
+                            let on = chosen == p.0;
+                            ui.painter().rect_filled(
+                                r,
+                                t.radius,
+                                if on {
+                                    t.row_selected
+                                } else if resp.hovered() {
+                                    t.hover
+                                } else {
+                                    t.field
+                                },
+                            );
                             if on {
-                                t.row_selected
-                            } else if resp.hovered() {
-                                t.hover
+                                ui.painter().rect_stroke(r, t.radius, Stroke::new(1.5, t.accent), StrokeKind::Inside);
+                            }
+                            page_icon(ui, Rect::from_center_size(pos2(r.center().x, r.top() + 34.0), vec2(40.0, 40.0)), p.1, p.2, &t);
+                            ui.painter().text(pos2(r.center().x, r.top() + 72.0), Align2::CENTER_CENTER, tl!(p.0), egui::FontId::proportional(12.0), t.text);
+                            let unit = if p.3 >= 300.0 { "in" } else { "px" };
+                            let size = if unit == "in" {
+                                format!(
+                                    "{} x {} in @ {} ppi",
+                                    widgets::fmt_num(to_unit(p.1 as f32, "in", p.3) as f64),
+                                    widgets::fmt_num(to_unit(p.2 as f32, "in", p.3) as f64),
+                                    p.3
+                                )
                             } else {
-                                t.field
-                            },
-                        );
-                        if on {
-                            ui.painter().rect_stroke(r, t.radius, Stroke::new(1.5, t.accent), StrokeKind::Inside);
+                                format!("{} x {} px @ {} ppi", p.1, p.2, p.3)
+                            };
+                            ui.painter().text(pos2(r.center().x, r.top() + 90.0), Align2::CENTER_CENTER, size, egui::FontId::proportional(10.5), t.text_faint);
+                            if resp.clicked() {
+                                apply_preset(f, p);
+                            }
                         }
-                        page_icon(ui, Rect::from_center_size(pos2(r.center().x, r.top() + 34.0), vec2(40.0, 40.0)), p.1, p.2, &t);
-                        ui.painter().text(pos2(r.center().x, r.top() + 72.0), Align2::CENTER_CENTER, tl!(p.0), egui::FontId::proportional(12.0), t.text);
-                        let unit = if p.3 >= 300.0 { "in" } else { "px" };
-                        let size = if unit == "in" {
-                            format!(
-                                "{} x {} in @ {} ppi",
-                                widgets::fmt_num(to_unit(p.1 as f32, "in", p.3) as f64),
-                                widgets::fmt_num(to_unit(p.2 as f32, "in", p.3) as f64),
-                                p.3
-                            )
-                        } else {
-                            format!("{} x {} px @ {} ppi", p.1, p.2, p.3)
-                        };
-                        ui.painter().text(pos2(r.center().x, r.top() + 90.0), Align2::CENTER_CENTER, size, egui::FontId::proportional(10.5), t.text_faint);
-                        if resp.clicked() {
-                            apply_preset(f, p);
-                        }
-                    }
-                });
-                ui.add_space(8.0);
+                    });
+                    ui.add_space(8.0);
+                }
             }
         });
         ui.add_space(10.0);
         // Right: Preset Details.
         ui.vertical(|ui| {
             ui.set_width(260.0);
-            ui.label(RichText::new(tl!("PRESET DETAILS")).size(11.0).color(t.text_faint));
-            ui.add_space(4.0);
-            let mut name = get_s(f, "name", tl!("Untitled-1"));
-            if ui.add(egui::TextEdit::singleline(&mut name).desired_width(250.0).font(egui::FontId::proportional(15.0))).changed() {
-                f.insert("name".into(), json!(name));
-            }
-            ui.add_space(8.0);
-            let ppi = get_f(f, "resolution", 72.0);
-            let mut unit = get_s(f, "__unit", "px");
-            small_label(ui, tl!("Width"));
-            ui.horizontal(|ui| {
-                let mut w = to_unit(get_f(f, "width", 1920.0), &unit, ppi);
-                if widgets::value_field(ui, &mut w, 0.01..=300_000.0, "", 110.0).changed() {
-                    f.insert("width".into(), px_value(from_unit(w, &unit, ppi)));
-                    f.remove("__preset");
+            if crate::folds::label_with(ui, "new.document.details", "PRESET DETAILS", egui::FontId::proportional(11.0), t.text_faint) {
+                ui.add_space(4.0);
+                let mut name = get_s(f, "name", tl!("Untitled-1"));
+                if ui.add(egui::TextEdit::singleline(&mut name).desired_width(250.0).font(egui::FontId::proportional(15.0))).changed() {
+                    f.insert("name".into(), json!(name));
                 }
-                let opts: Vec<(String, &str)> = UNITS.iter().map(|u| (u.0.to_string(), u.1)).collect();
-                if widgets::dropdown(ui, "nd-unit", &mut unit, &opts, 120.0) {
-                    f.insert("__unit".into(), json!(unit));
-                }
-            });
-            small_label(ui, tl!("Height"));
-            ui.horizontal(|ui| {
-                let mut h = to_unit(get_f(f, "height", 1080.0), &unit, ppi);
-                if widgets::value_field(ui, &mut h, 0.01..=300_000.0, "", 110.0).changed() {
-                    f.insert("height".into(), px_value(from_unit(h, &unit, ppi)));
-                    f.remove("__preset");
-                }
-                ui.add_space(6.0);
-                small_label(ui, tl!("Orientation"));
-                let (w, h) = (get_f(f, "width", 1920.0), get_f(f, "height", 1080.0));
-                for (icon, portrait) in [("rectangle-vertical", true), ("rectangle-horizontal", false)] {
-                    if icons::button(ui, icon, 24.0, (h > w) == portrait, if portrait { "Portrait" } else { "Landscape" }).clicked() && (h > w) != portrait {
-                        f.insert("width".into(), px_value(h));
-                        f.insert("height".into(), px_value(w));
+                ui.add_space(8.0);
+                let ppi = get_f(f, "resolution", 72.0);
+                let mut unit = get_s(f, "__unit", "px");
+                small_label(ui, tl!("Width"));
+                ui.horizontal(|ui| {
+                    let mut w = to_unit(get_f(f, "width", 1920.0), &unit, ppi);
+                    if widgets::value_field(ui, &mut w, 0.01..=300_000.0, "", 110.0).changed() {
+                        f.insert("width".into(), px_value(from_unit(w, &unit, ppi)));
+                        f.remove("__preset");
                     }
+                    let opts: Vec<(String, &str)> = UNITS.iter().map(|u| (u.0.to_string(), u.1)).collect();
+                    if widgets::dropdown(ui, "nd-unit", &mut unit, &opts, 120.0) {
+                        f.insert("__unit".into(), json!(unit));
+                    }
+                });
+                small_label(ui, tl!("Height"));
+                ui.horizontal(|ui| {
+                    let mut h = to_unit(get_f(f, "height", 1080.0), &unit, ppi);
+                    if widgets::value_field(ui, &mut h, 0.01..=300_000.0, "", 110.0).changed() {
+                        f.insert("height".into(), px_value(from_unit(h, &unit, ppi)));
+                        f.remove("__preset");
+                    }
+                    ui.add_space(6.0);
+                    small_label(ui, tl!("Orientation"));
+                    let (w, h) = (get_f(f, "width", 1920.0), get_f(f, "height", 1080.0));
+                    for (icon, portrait) in [("rectangle-vertical", true), ("rectangle-horizontal", false)] {
+                        if icons::button(ui, icon, 24.0, (h > w) == portrait, if portrait { "Portrait" } else { "Landscape" }).clicked() && (h > w) != portrait
+                        {
+                            f.insert("width".into(), px_value(h));
+                            f.insert("height".into(), px_value(w));
+                        }
+                    }
+                });
+                ui.add_space(4.0);
+                small_label(ui, tl!("Resolution"));
+                ui.horizontal(|ui| {
+                    let per_cm = get_s(f, "__resUnit", "in") == "cm";
+                    let mut r = if per_cm { ppi / 2.54 } else { ppi };
+                    if widgets::value_field(ui, &mut r, 1.0..=30_000.0, "", 110.0).changed() {
+                        set_resolution(f, if per_cm { r * 2.54 } else { r });
+                    }
+                    let mut ru = get_s(f, "__resUnit", "in");
+                    if widgets::dropdown(
+                        ui,
+                        "nd-resunit",
+                        &mut ru,
+                        &[("in".to_string(), tl!("Pixels/Inch")), ("cm".to_string(), tl!("Pixels/Centimeter"))],
+                        120.0,
+                    ) {
+                        f.insert("__resUnit".into(), json!(ru));
+                    }
+                });
+                ui.add_space(4.0);
+                small_label(ui, tl!("Color Mode"));
+                ui.horizontal(|ui| {
+                    let mut mode = get_s(f, "mode", "rgb");
+                    if widgets::dropdown(
+                        ui,
+                        "nd-mode",
+                        &mut mode,
+                        &[
+                            ("gray".to_string(), tl!("Grayscale")),
+                            ("rgb".to_string(), tl!("RGB Color")),
+                            ("cmyk".to_string(), tl!("CMYK Color")),
+                            ("lab".to_string(), tl!("Lab Color")),
+                        ],
+                        110.0,
+                    ) {
+                        f.insert("mode".into(), json!(mode));
+                    }
+                    let mut depth = f.get("depth").and_then(Value::as_u64).unwrap_or(8);
+                    let depth_options: Vec<(u64, &str, &str)> = DEPTH_OPTIONS.iter().map(|(bits, label, tooltip)| (*bits, *label, *tooltip)).collect();
+                    if widgets::dropdown_with_tooltips(ui, "nd-depth", &mut depth, &depth_options, 120.0) {
+                        f.insert("depth".into(), json!(depth));
+                    }
+                });
+                ui.add_space(4.0);
+                small_label(ui, tl!("Background Contents"));
+                let mut bg = get_s(f, "background", "white");
+                let opts = [
+                    ("white".to_string(), tl!("White")),
+                    ("black".to_string(), tl!("Black")),
+                    ("backgroundColor".to_string(), tl!("Background Color")),
+                    ("transparent".to_string(), tl!("Transparent")),
+                ];
+                if widgets::dropdown(ui, "nd-bg", &mut bg, &opts, 240.0) {
+                    f.insert("background".into(), json!(bg));
                 }
-            });
-            ui.add_space(4.0);
-            small_label(ui, tl!("Resolution"));
-            ui.horizontal(|ui| {
-                let per_cm = get_s(f, "__resUnit", "in") == "cm";
-                let mut r = if per_cm { ppi / 2.54 } else { ppi };
-                if widgets::value_field(ui, &mut r, 1.0..=30_000.0, "", 110.0).changed() {
-                    set_resolution(f, if per_cm { r * 2.54 } else { r });
-                }
-                let mut ru = get_s(f, "__resUnit", "in");
-                if widgets::dropdown(ui, "nd-resunit", &mut ru, &[("in".to_string(), tl!("Pixels/Inch")), ("cm".to_string(), tl!("Pixels/Centimeter"))], 120.0)
-                {
-                    f.insert("__resUnit".into(), json!(ru));
-                }
-            });
-            ui.add_space(4.0);
-            small_label(ui, tl!("Color Mode"));
-            ui.horizontal(|ui| {
-                let mut mode = get_s(f, "mode", "rgb");
-                if widgets::dropdown(
-                    ui,
-                    "nd-mode",
-                    &mut mode,
-                    &[
-                        ("gray".to_string(), tl!("Grayscale")),
-                        ("rgb".to_string(), tl!("RGB Color")),
-                        ("cmyk".to_string(), tl!("CMYK Color")),
-                        ("lab".to_string(), tl!("Lab Color")),
-                    ],
-                    110.0,
-                ) {
-                    f.insert("mode".into(), json!(mode));
-                }
-                let mut depth = f.get("depth").and_then(Value::as_u64).unwrap_or(8);
-                let depth_options: Vec<(u64, &str, &str)> = DEPTH_OPTIONS.iter().map(|(bits, label, tooltip)| (*bits, *label, *tooltip)).collect();
-                if widgets::dropdown_with_tooltips(ui, "nd-depth", &mut depth, &depth_options, 120.0) {
-                    f.insert("depth".into(), json!(depth));
-                }
-            });
-            ui.add_space(4.0);
-            small_label(ui, tl!("Background Contents"));
-            let mut bg = get_s(f, "background", "white");
-            let opts = [
-                ("white".to_string(), tl!("White")),
-                ("black".to_string(), tl!("Black")),
-                ("backgroundColor".to_string(), tl!("Background Color")),
-                ("transparent".to_string(), tl!("Transparent")),
-            ];
-            if widgets::dropdown(ui, "nd-bg", &mut bg, &opts, 240.0) {
-                f.insert("background".into(), json!(bg));
             }
         });
     });

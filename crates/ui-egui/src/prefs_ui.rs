@@ -923,7 +923,10 @@ fn prefs_body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
 fn gpu_status_rows(ui: &mut egui::Ui, info: Option<&Value>, obj: &mut Map<String, Value>) {
     let t = Tokens::get(ui.ctx());
     ui.add_space(10.0);
-    ui.label(RichText::new(tl!("Graphics")).font(crate::theme::semibold(12.5)).color(t.text));
+    // folds like every list and section (remembered, crate::folds)
+    if !crate::folds::header(ui, "preferences.performance.graphics", "Graphics") {
+        return;
+    }
     for line in info.and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
         ui.label(RichText::new(line).color(t.text_dim));
     }
@@ -1172,6 +1175,7 @@ fn shortcuts_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String
     let needle = filter.to_ascii_lowercase();
     egui::ScrollArea::vertical().max_height(420.0).id_salt("shortcuts-scroll").show(ui, |ui| {
         let mut last_top = String::new();
+        let mut group_open = true;
         egui::Grid::new("shortcut-grid").num_columns(3).spacing([12.0, 3.0]).striped(true).show(ui, |ui| {
             for (id, label, path, def) in &items {
                 let cur = eff(&overrides, id, def);
@@ -1186,11 +1190,15 @@ fn shortcuts_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String
                 }
                 let top = shown_path.first().cloned().unwrap_or_else(|| tl!("Other").into());
                 if top != last_top {
-                    ui.label(RichText::new(&top).font(crate::theme::semibold(12.5)).color(t.text));
+                    // each menu's commands fold under it (remembered, crate::folds)
+                    group_open = crate::folds::label_with(ui, &format!("keyboard.shortcuts.menu:{top}"), &top, crate::theme::semibold(12.5), t.text);
                     ui.label("");
                     ui.label("");
                     ui.end_row();
                     last_top = top;
+                }
+                if !group_open {
+                    continue;
                 }
                 let name = match shown_path.get(1..) {
                     Some(rest) if !rest.is_empty() => format!("{} › {}", rest.join(" › "), shown_label),

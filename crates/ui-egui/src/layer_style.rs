@@ -784,7 +784,11 @@ pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Valu
                 let ctx = ui.ctx().clone();
                 egui::ScrollArea::vertical().max_height(340.0).id_salt("layer-style-presets-main").show(ui, |ui| {
                     for group in &app.session.presets.styles {
-                        ui.label(RichText::new(&group.name).size(12.0).color(t.text_dim));
+                        // each group folds (remembered, crate::folds; shared with the Styles panel)
+                        if !crate::folds::label_with(ui, &format!("styles.group:{}", group.name), &group.name, egui::FontId::proportional(12.0), t.text_dim) {
+                            ui.add_space(4.0);
+                            continue;
+                        }
                         ui.add_space(3.0);
                         ui.horizontal_wrapped(|ui| {
                             ui.spacing_mut().item_spacing = vec2(4.0, 4.0);

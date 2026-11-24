@@ -542,7 +542,10 @@ fn mixer_options(ui: &mut egui::Ui, b: &mut BrushSettings) {
     ui.add_space(4.0);
     widgets::hairline(ui);
     ui.add_space(4.0);
-    ui.label(RichText::new(tl!("Mixer Brush")).font(theme::semibold(11.5)).color(t.text_dim));
+    // folds to its title (remembered, crate::folds)
+    if !crate::folds::label_with(ui, "brush.settings.mixer.brush", "Mixer Brush", theme::semibold(11.5), t.text_dim) {
+        return;
+    }
     ui.add_space(2.0);
     let m = &mut b.mixer;
     pct(ui, tl!("Wet"), &mut m.wet, 1.0);

@@ -147,50 +147,52 @@ pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Valu
         // Left: settings.
         ui.vertical(|ui| {
             ui.set_width(220.0);
-            ui.label(egui::RichText::new(tl!("File Settings")).font(crate::theme::semibold(12.0)).color(t.text));
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Format")).color(t.text_dim));
-                let mut fmt = s_fmt(f);
-                let opts: Vec<(String, &str)> = FORMATS.iter().map(|(k, l)| (k.to_string(), *l)).collect();
-                if crate::widgets::dropdown(ui, "export-format", &mut fmt, &opts, 130.0) {
-                    set_format_defaults(f, &fmt, &app.session.prefs().export);
+            if crate::folds::label_with(ui, "export.as.file.settings", "File Settings", crate::theme::semibold(12.0), t.text) {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(tl!("Format")).color(t.text_dim));
+                    let mut fmt = s_fmt(f);
+                    let opts: Vec<(String, &str)> = FORMATS.iter().map(|(k, l)| (k.to_string(), *l)).collect();
+                    if crate::widgets::dropdown(ui, "export-format", &mut fmt, &opts, 130.0) {
+                        set_format_defaults(f, &fmt, &app.session.prefs().export);
+                    }
+                });
+                let fmt = s_fmt(f);
+                if fmt == "webp" {
+                    let mut ll = lossless(f);
+                    crate::widgets::checkbox(ui, &mut ll, tl!("Lossless"));
+                    f.insert("lossless".into(), json!(ll));
                 }
-            });
-            let fmt = s_fmt(f);
-            if fmt == "webp" {
-                let mut ll = lossless(f);
-                crate::widgets::checkbox(ui, &mut ll, tl!("Lossless"));
-                f.insert("lossless".into(), json!(ll));
-            }
-            if fmt == "jpg" || (fmt == "webp" && !lossless(f)) {
-                let mut q = n(f, "quality", 85.0) as f32;
-                crate::widgets::slider_row(ui, tl!("Quality"), &mut q, 1.0..=100.0, "%", None);
-                f.insert("quality".into(), json!(q.round()));
-            }
-            if fmt != "jpg" {
-                let mut tr = f.get("transparency").and_then(Value::as_bool).unwrap_or(true);
-                crate::widgets::checkbox(ui, &mut tr, tl!("Transparency"));
-                f.insert("transparency".into(), json!(tr));
-            }
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Metadata")).color(t.text_dim));
-                let mut m = s(f, "metadata");
-                let opts: Vec<(String, &str)> = vec![("none".into(), tl!("None")), ("all".into(), tl!("All"))];
-                if crate::widgets::dropdown(ui, "export-metadata", &mut m, &opts, 130.0) {
-                    f.insert("metadata".into(), json!(m));
+                if fmt == "jpg" || (fmt == "webp" && !lossless(f)) {
+                    let mut q = n(f, "quality", 85.0) as f32;
+                    crate::widgets::slider_row(ui, tl!("Quality"), &mut q, 1.0..=100.0, "%", None);
+                    f.insert("quality".into(), json!(q.round()));
                 }
-            });
+                if fmt != "jpg" {
+                    let mut tr = f.get("transparency").and_then(Value::as_bool).unwrap_or(true);
+                    crate::widgets::checkbox(ui, &mut tr, tl!("Transparency"));
+                    f.insert("transparency".into(), json!(tr));
+                }
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(tl!("Metadata")).color(t.text_dim));
+                    let mut m = s(f, "metadata");
+                    let opts: Vec<(String, &str)> = vec![("none".into(), tl!("None")), ("all".into(), tl!("All"))];
+                    if crate::widgets::dropdown(ui, "export-metadata", &mut m, &opts, 130.0) {
+                        f.insert("metadata".into(), json!(m));
+                    }
+                });
+            }
             ui.add_space(8.0);
-            ui.label(egui::RichText::new(tl!("Image Size")).font(crate::theme::semibold(12.0)).color(t.text));
-            let mut sc = n(f, "scale", 100.0) as f32;
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Scale")).color(t.text_dim));
-                crate::widgets::value_field(ui, &mut sc, 1.0..=1000.0, "%", 70.0);
-            });
-            f.insert("scale".into(), json!(sc.round()));
-            let (bw, bh) = (n(f, "__w", f64::from(doc.size.width)) as f32, n(f, "__h", f64::from(doc.size.height)) as f32);
-            let (w, h) = ((bw * sc / 100.0).round(), (bh * sc / 100.0).round());
-            ui.label(egui::RichText::new(format!("{w} × {h} px")).color(t.text_dim).size(11.5));
+            if crate::folds::label_with(ui, "export.as.image.size", "Image Size", crate::theme::semibold(12.0), t.text) {
+                let mut sc = n(f, "scale", 100.0) as f32;
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(tl!("Scale")).color(t.text_dim));
+                    crate::widgets::value_field(ui, &mut sc, 1.0..=1000.0, "%", 70.0);
+                });
+                f.insert("scale".into(), json!(sc.round()));
+                let (bw, bh) = (n(f, "__w", f64::from(doc.size.width)) as f32, n(f, "__h", f64::from(doc.size.height)) as f32);
+                let (w, h) = ((bw * sc / 100.0).round(), (bh * sc / 100.0).round());
+                ui.label(egui::RichText::new(format!("{w} × {h} px")).color(t.text_dim).size(11.5));
+            }
         });
         ui.add_space(12.0);
         // Right: preview + estimated size.
