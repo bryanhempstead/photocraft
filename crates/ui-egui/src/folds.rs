@@ -211,3 +211,103 @@ pub fn invoke(app: &mut PhotocraftApp, ctx: &egui::Context, id: &str, p: &Value)
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use egui::vec2;
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+    use serde_json::json;
+
+    use crate::PhotocraftApp;
+
+    /// An app whose preferences live in `store` (as on disk).
+    fn app_on(store: &Arc<Mutex<Option<String>>>) -> PhotocraftApp {
+        let (a, b) = (store.clone(), store.clone());
+        let services = crate::Services {
+            load_prefs: Some(Box::new(move || a.lock().unwrap().clone())),
+            save_prefs: Some(Box::new(move |s: &str| {
+                *b.lock().unwrap() = Some(s.to_string());
+                Ok(())
+            })),
+            ..Default::default()
+        };
+        PhotocraftApp::new(photocraft_engine::Session::new(), services)
+    }
+
+    #[test]
+    fn a_fold_is_a_command_and_survives_saving_and_loading_the_preferences() {
+        let store = Arc::new(Mutex::new(None));
+        let ctx = egui::Context::default();
+        let mut app = app_on(&store);
+        crate::prefs_ui::load(&mut app);
+        let r = crate::menus::invoke(&mut app, &ctx, "ui.fold", json!({"id": "export.as.file.settings", "open": false})).unwrap();
+        assert_eq!(r, json!({"id": "export.as.file.settings", "open": false}));
+        // no `open`: toggles
+        assert_eq!(crate::menus::invoke(&mut app, &ctx, "ui.fold", json!({"id": "print.printer.setup"})).unwrap()["open"], false);
+        assert_eq!(crate::menus::invoke(&mut app, &ctx, "ui.fold", json!({"id": "print.printer.setup"})).unwrap()["open"], true);
+        let r = crate::menus::invoke(&mut app, &ctx, "ui.folds", json!({})).unwrap();
+        assert_eq!(r["folded"], json!(["export.as.file.settings"]), "{r}");
+        // bad params are errors, never a crash
+        for bad in [json!({}), json!({"id": "  "}), json!({"id": "x", "open": 1})] {
+            assert!(crate::menus::invoke(&mut app, &ctx, "ui.fold", bad).is_err());
+        }
+        // written with the preferences…
+        crate::prefs_ui::tick(&mut app, &ctx);
+        let saved: serde_json::Value = serde_json::from_str(store.lock().unwrap().as_deref().unwrap()).unwrap();
+        assert_eq!(saved["folds"]["export.as.file.settings"], false, "{saved}");
+        // …and read back by the next launch
+        let mut next = app_on(&store);
+        crate::prefs_ui::load(&mut next);
+        assert_eq!(next.session.prefs().folds.get("export.as.file.settings"), Some(&false));
+        assert_eq!(next.session.prefs().folds.get("print.printer.setup"), Some(&true));
+        // preferences from before folds existed: every section open
+        let old: photocraft_engine::prefs::Preferences = serde_json::from_value(json!({"general": {}})).unwrap();
+        assert!(old.folds.is_empty());
+    }
+
+    fn harness() -> Harness<'static, PhotocraftApp> {
+        let mut h = Harness::builder().with_size(vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(|cc| {
+            PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+            let mut app = PhotocraftApp::new(photocraft_engine::Session::new(), Default::default());
+            app.run("file.new", json!({"width": 200, "height": 120})).unwrap();
+            app
+        });
+        h.run_steps(6);
+        h
+    }
+
+    /// Folded sections hide what is in them: a header click (Export As ▸ File Settings), and the
+    /// command (Print ▸ Printer Setup); the click lands in the preferences.
+    #[test]
+    fn folded_sections_hide_their_contents() {
+        let mut h = harness();
+        crate::export_dialog::open(h.state_mut()).unwrap();
+        h.run_steps(6);
+        assert!(h.query_by_label("Format").is_some(), "File Settings open");
+        assert!(h.query_by_label("Scale").is_some(), "Image Size open");
+        h.get_by_label("File Settings").click();
+        h.run_steps(6);
+        assert!(h.query_by_label("Format").is_none(), "File Settings folded");
+        assert!(h.query_by_label("Scale").is_some(), "Image Size still open");
+        assert_eq!(h.state().session.prefs().folds.get("export.as.file.settings"), Some(&false), "remembered");
+        let ctx = h.ctx.clone();
+        let r = crate::menus::invoke(h.state_mut(), &ctx, "ui.folds", json!({})).unwrap();
+        assert!(r["onScreen"].as_array().unwrap().iter().any(|s| s["id"] == "export.as.image.size" && s["open"] == true), "{r}");
+        h.get_by_label("File Settings").click();
+        h.run_steps(6);
+        assert!(h.query_by_label("Format").is_some(), "unfolded again");
+        h.state_mut().ui.dialogs.clear();
+        h.run_steps(4);
+        // Print ▸ Printer Setup, folded by the command
+        crate::file_ui::open_print(h.state_mut());
+        h.run_steps(6);
+        assert!(h.query_by_label("Copies").is_some(), "Printer Setup open");
+        crate::menus::invoke(h.state_mut(), &ctx, "ui.fold", json!({"id": "print.printer.setup", "open": false})).unwrap();
+        h.run_steps(6);
+        assert!(h.query_by_label("Copies").is_none(), "Printer Setup folded");
+        assert!(h.query_by_label("Color Management").is_some(), "the next group's title stays");
+    }
+}
