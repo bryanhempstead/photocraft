@@ -68,8 +68,9 @@ pub fn canvas_resize_params(old: (u32, u32), new_w: Option<f32>, new_h: Option<f
 /// Collapsible section header with a chevron, Photoshop Properties style. Returns whether it is open.
 fn section(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
     let t = Tokens::get(ui.ctx());
-    let key = egui::Id::new(("doc-props-section", id));
-    let mut open = ui.data(|d| d.get_temp::<bool>(key)).unwrap_or(true);
+    // remembered across launches (crate::folds)
+    let fold = format!("document.properties.{id}");
+    let mut open = crate::folds::is_open(ui.ctx(), &fold);
     let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::click());
     icons::paint(
         ui,
@@ -81,8 +82,10 @@ fn section(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
     ui.painter().text(pos2(r.left() + 18.0, r.center().y), Align2::LEFT_CENTER, title, crate::theme::semibold(12.0), t.text);
     if resp.clicked() {
         open = !open;
-        ui.data_mut(|d| d.insert_temp(key, open));
+        crate::folds::set(ui.ctx(), &fold, open);
     }
+    let label = title.to_string();
+    resp.widget_info(move || egui::WidgetInfo::selected(egui::WidgetType::CollapsingHeader, true, open, &label));
     open
 }
 

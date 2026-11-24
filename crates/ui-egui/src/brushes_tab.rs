@@ -55,17 +55,29 @@ pub fn drop_target(presets: &[BrushPreset], dragged: &str, target: &str, after: 
     Some((t.group.clone(), idx))
 }
 
+/// The fold id of a Brushes panel group (shared with the brush picker's groups).
+pub fn brush_group_fold(label: &str) -> String {
+    format!("brushes.group:{label}")
+}
+
 /// Turn the tab's actions into commands.
 pub fn apply(app: &mut PhotocraftApp, acts: Vec<Action>) {
     for a in acts {
         match a {
             Action::Select(name) => run_or_status(app, "tools.setBrush", json!({ "preset": name })),
             Action::ToggleGroup(g) => {
+                // remembered across launches (crate::folds); `collapsed` is the control
+                // channel's session-only override
                 let c = &mut app.ui.brushes_panel.collapsed;
-                match c.iter().position(|x| *x == g) {
-                    Some(i) => drop(c.remove(i)),
-                    None => c.push(g),
-                }
+                let key = brush_group_fold(&g);
+                let open = match c.iter().position(|x| *x == g) {
+                    Some(i) => {
+                        c.remove(i);
+                        true
+                    }
+                    None => !app.session.prefs().folds.get(&key).copied().unwrap_or(true),
+                };
+                app.session.edit_prefs(|p| p.folds.insert(key, open));
             }
             Action::Move { name, group, index } => {
                 let mut p = json!({ "name": name, "group": group });
@@ -333,7 +345,7 @@ pub fn show(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 continue;
             }
             let key = group_key(presets, &label);
-            let open = !filter.is_empty() || !collapsed.contains(&label);
+            let open = !filter.is_empty() || (!collapsed.contains(&label) && crate::folds::is_open(ui.ctx(), &brush_group_fold(&label)));
             group_header(ui, &label, &key, open, items.len(), &mut acts);
             if !open {
                 continue;

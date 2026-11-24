@@ -90,7 +90,10 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             } else if resp.hovered() {
                 ui.painter().rect_filled(rect, 0.0, t.hover.gamma_multiply(0.5));
             }
-            let expanded = app.ui.actions.expanded.get(i).copied().unwrap_or(false);
+            // an action's steps fold under it (remembered, crate::folds; closed until opened, and
+            // opened while it records)
+            let fold = format!("actions.action:{name}");
+            let expanded = app.ui.actions.expanded.get(i).copied().unwrap_or(false) || crate::folds::is_open_or(ui.ctx(), &fold, false);
             let tri = Rect::from_center_size(pos2(rect.left() + 12.0, rect.center().y), vec2(8.0, 8.0));
             let pts =
                 if expanded { vec![tri.left_top(), tri.right_top(), tri.center_bottom()] } else { vec![tri.left_top(), tri.right_center(), tri.left_bottom()] };
@@ -115,7 +118,8 @@ pub fn panel(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                     if app.ui.actions.expanded.len() <= i {
                         app.ui.actions.expanded.resize(i + 1, false);
                     }
-                    app.ui.actions.expanded[i] = !expanded;
+                    app.ui.actions.expanded[i] = false;
+                    crate::folds::set(ui.ctx(), &fold, !expanded);
                 }
             }
             if resp.double_clicked() {

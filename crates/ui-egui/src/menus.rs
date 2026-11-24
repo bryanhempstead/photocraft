@@ -36,6 +36,8 @@ pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("view.screenMode.cycle", "Cycle Screen Mode", &[], Some("F")),
     ("edit.freeTransformCopy", "Free Transform a Copy", &[], Some("Cmd+Alt+T")),
     ("type.editText", "Edit Type", &[], None),
+    ("ui.fold", "Fold Section", &[], None),
+    ("ui.folds", "Folded Sections", &[], None),
     ("view.zoomIn", "Zoom In", &["View"], Some("Cmd+=")),
     ("view.zoomOut", "Zoom Out", &["View"], Some("Cmd+-")),
     ("view.fitOnScreen", "Fit on Screen", &["View"], Some("Cmd+0")),
@@ -176,6 +178,10 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
     }
     // Save for Web, Print and the other File-menu dialogs added with slices.
     if let Some(r) = crate::file_ui::invoke(app, ctx, id, &params) {
+        return r;
+    }
+    // ui.fold / ui.folds: every foldable list and section
+    if let Some(r) = crate::folds::invoke(app, ctx, id, &params) {
         return r;
     }
     if let Some(r) = crate::view_cmds::invoke(app, ctx, id, &params) {

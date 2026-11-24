@@ -775,6 +775,9 @@ pub struct Preferences {
     pub dialogs: BTreeMap<String, Value>,
     /// File › Scripts › Script Events Manager: event → script bindings.
     pub script_events: crate::automate_cmds::ScriptEvents,
+    /// Foldable lists and sections (every panel, dialog and preferences group): section id →
+    /// open. A section not listed is open. Owned by the shell (`ui-egui` `folds`).
+    pub folds: BTreeMap<String, bool>,
 }
 
 /// Preferences dialog sections in Photoshop's order: (id, title).

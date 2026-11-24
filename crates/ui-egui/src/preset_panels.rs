@@ -228,8 +228,10 @@ enum Ev {
     New,
 }
 
-fn group_open(st: &PresetUi, panel: &str, gi: usize, name: &str) -> bool {
-    (gi == 0) != st.toggled.contains(&format!("{panel}/{name}"))
+/// The fold id of a preset folder (the first starts open, the rest closed; remembered,
+/// `crate::folds`).
+fn group_fold(panel: &str, name: &str) -> String {
+    format!("presets.{panel}:{name}")
 }
 
 /// Draws the folders and footer; `thumb` paints item `(group, item)` into a rect.
@@ -284,7 +286,8 @@ fn browser(
     egui::ScrollArea::vertical().id_salt(("preset-scroll", panel)).max_height(max_h).auto_shrink([false, true]).show(ui, |ui| {
         ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
         for (gi, g) in groups.iter().enumerate() {
-            let open = group_open(st, panel, gi, &g.name);
+            let fold_id = group_fold(panel, &g.name);
+            let open = crate::folds::is_open_or(ui.ctx(), &fold_id, gi == 0);
             let (hr, hresp) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::click());
             if hresp.hovered() {
                 ui.painter().rect_filled(hr, 2.0, t.hover.gamma_multiply(0.5));
@@ -295,10 +298,7 @@ fn browser(
             crate::icons::paint(ui, fold, if open { "folder-open" } else { "folder" }, 12.0, t.icon);
             ui.painter().text(pos2(hr.left() + 37.0, hr.center().y), Align2::LEFT_CENTER, &g.name, FontId::proportional(11.5), t.text);
             if hresp.clicked() {
-                let k = format!("{panel}/{}", g.name);
-                if !st.toggled.remove(&k) {
-                    st.toggled.insert(k);
-                }
+                crate::folds::set(ui.ctx(), &fold_id, !open);
             }
             hresp.context_menu(|ui| {
                 if ui.button(tl!("Rename Group…")).clicked() {

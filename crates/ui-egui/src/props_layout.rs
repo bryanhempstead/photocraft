@@ -66,8 +66,9 @@ pub fn header(ui: &mut egui::Ui, layer: &Layer) {
 /// Every Properties section uses this, so headers look and behave alike.
 pub fn section(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
     let t = Tokens::get(ui.ctx());
-    let key = egui::Id::new(("props-section", id));
-    let mut open = ui.data(|d| d.get_temp::<bool>(key)).unwrap_or(true);
+    // remembered across launches (crate::folds)
+    let fold = format!("properties.{id}");
+    let mut open = crate::folds::is_open(ui.ctx(), &fold);
     ui.add_space(theme::ROW_GAP);
     widgets::hairline(ui);
     let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
@@ -84,7 +85,7 @@ pub fn section(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
     ui.painter().text(pos2(r.left() + 18.0, r.center().y), egui::Align2::LEFT_CENTER, tl!(title), theme::semibold(12.0), t.text);
     if resp.clicked() {
         open = !open;
-        ui.data_mut(|d| d.insert_temp(key, open));
+        crate::folds::set(ui.ctx(), &fold, open);
     }
     let label = title.to_string();
     resp.widget_info(move || egui::WidgetInfo::selected(egui::WidgetType::CollapsingHeader, true, open, &label));
