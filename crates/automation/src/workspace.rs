@@ -534,9 +534,10 @@ mod tests {
             assert!(authorize_engine_command("prefs.set", &serde_json::json!({"path": path, "value": {}})).is_err(), "{path}");
         }
         assert!(
-            authorize_engine_command("prefs.set", &serde_json::json!({"values": {"interface.language": "fr", "historyLog.filePath": "/outside/log"}})).is_err()
+            authorize_engine_command("prefs.set", &serde_json::json!({"values": {"interface.showTooltips": false, "historyLog.filePath": "/outside/log"}}))
+                .is_err()
         );
-        assert!(authorize_engine_command("prefs.set", &serde_json::json!({"path": "interface.language", "value": "fr"})).is_ok());
+        assert!(authorize_engine_command("prefs.set", &serde_json::json!({"path": "interface.showTooltips", "value": false})).is_ok());
     }
 
     #[test]
@@ -633,7 +634,7 @@ mod tests {
             ("plugin.install", serde_json::json!({"path": "/outside/plugin.wasm"})),
             ("plugin.reload", serde_json::json!({"path": "/outside/plugins"})),
             ("prefs.set", serde_json::json!({"path": "historyLog.filePath", "value": "/outside/log"})),
-            ("prefs.set", serde_json::json!({"values": {"interface.language": "fr", "historyLog.filePath": "/outside/log"}})),
+            ("prefs.set", serde_json::json!({"values": {"interface.showTooltips": false, "historyLog.filePath": "/outside/log"}})),
         ] {
             assert!(headless.command_run(id, params).is_err(), "{id}");
         }

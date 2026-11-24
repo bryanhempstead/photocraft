@@ -3,7 +3,7 @@
 //!
 //! Pure and platform-free, so it is tested everywhere and builds for the web; only the backend
 //! touches AppKit. What the layout does ([`mac_layout`]):
-//! - an **app menu** named PhotoCraft: About (from Help), Settings (Edit › Preferences), Language,
+//! - an **app menu** named PhotoCraft: About (from Help), Settings (Edit › Preferences),
 //!   Appearance (Window › Theme), Services, Hide, Hide Others, Show All and Quit (File › Exit,
 //!   still the app's own `file.exit` so the unsaved-changes prompt runs). The other Craft apps
 //!   use the same app menu;
@@ -87,8 +87,6 @@ pub enum ItemRole {
     Minimize,
     /// Window › Theme and Next Theme, which become the app menu's Appearance submenu.
     Appearance,
-    /// The app menu's Language submenu (its labels are final, never translated by id).
-    Language,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -502,26 +500,6 @@ fn appearance_node(bar: &mut MenuBar, lang: Lang) -> Option<Node> {
     Some(Node::Submenu { label: tr(lang, "Appearance").into(), children, role: Some(ItemRole::Appearance) })
 }
 
-/// Command ids of the app menu's Language items: `app.language.<code>`, where `auto` follows the
-/// system (the `interface.language` preference values).
-pub const LANGUAGE_PREFIX: &str = "app.language.";
-
-/// Language in the app menu, after Settings: Auto, then every UI language in its own name, with
-/// the current preference checked.
-fn language_node(pref: &str, lang: Lang) -> Node {
-    let item = |code: &str, label: &str| Item {
-        id: format!("{LANGUAGE_PREFIX}{code}"),
-        label: label.into(),
-        shortcut: None,
-        enabled: true,
-        checked: Some(pref == code),
-        role: Some(ItemRole::Language),
-    };
-    let mut children = vec![Node::Item(item("auto", tr(lang, "Auto"))), Node::Separator];
-    children.extend(Lang::all().map(|l| Node::Item(item(l.code(), l.name()))));
-    Node::Submenu { label: tr(lang, "Language").into(), children, role: Some(ItemRole::Language) }
-}
-
 fn node_ids(node: &Node) -> Vec<String> {
     match node {
         Node::Item(it) => vec![it.id.clone()],
@@ -568,9 +546,8 @@ fn translate(bar: &mut MenuBar, lang: Lang) {
     }
 }
 
-/// PhotoCraft's menus as a Mac menu bar, in the UI language; `language` is the
-/// `interface.language` preference (`auto` or a code), checked in the app menu's Language.
-pub fn photocraft_layout(items: &[MenuItem], lang: Lang, language: &str) -> Layout {
+/// PhotoCraft's menus as a Mac menu bar.
+pub fn photocraft_layout(items: &[MenuItem], lang: Lang) -> Layout {
     let mut bar = from_items(&crate::menus::TOP_MENUS, items);
     bar.tag_item("help.about", ItemRole::About);
     bar.tag_item("file.exit", ItemRole::Quit);
@@ -580,7 +557,8 @@ pub fn photocraft_layout(items: &[MenuItem], lang: Lang, language: &str) -> Layo
     bar.tag_menu("Window", MenuRole::Window);
     bar.tag_menu("Help", MenuRole::Help);
     let mut layout = mac_layout(&bar, lang);
-    // Language goes right after Settings (before Appearance), as in the other Craft apps.
+    // Language, right after Settings: English is the only one installed (Bryan, 11-23 — the other
+    // languages' files are gone to save space; the option stays and shows what is there)
     if let Some(app_menu) = layout.bar.menus.iter_mut().find(|m| m.role == MenuRole::App) {
         let settings = |n: &Node| match n {
             Node::Item(it) => it.role == Some(ItemRole::Settings),
@@ -588,7 +566,8 @@ pub fn photocraft_layout(items: &[MenuItem], lang: Lang, language: &str) -> Layo
             _ => false,
         };
         let at = app_menu.children.iter().position(settings).map_or(0, |i| i + 1);
-        app_menu.children.insert(at, language_node(language, lang));
+        let english = Item { id: "app.language.en".into(), label: "English".into(), shortcut: None, enabled: true, checked: Some(true), role: None };
+        app_menu.children.insert(at, Node::Submenu { label: "Language".into(), children: vec![Node::Item(english)], role: None });
     }
     translate(&mut layout.bar, lang);
     layout
@@ -674,7 +653,7 @@ pub fn sync(app: &mut PhotocraftApp, ctx: &egui::Context) {
         return;
     }
     let lang = crate::i18n::current();
-    let layout = photocraft_layout(&crate::menus::menu_items(app), lang, &app.session.prefs().interface.language);
+    let layout = photocraft_layout(&crate::menus::menu_items(app), lang);
     let Some(menu) = app.services.native_menu.as_mut() else { return };
     if !menu.logged {
         for c in &layout.clashes {
@@ -688,7 +667,7 @@ pub fn sync(app: &mut PhotocraftApp, ctx: &egui::Context) {
 }
 
 /// What the menus' rows depend on, cheaply: commands run, the documents and their revisions,
-/// selection, recent files, panels and view state, the language. `input` forces a change on
+/// selection, recent files, panels and view state. `input` forces a change on
 /// frames with a click or key press, which covers state the hash doesn't list.
 fn state_hash(app: &PhotocraftApp, input: Option<u64>) -> u64 {
     let mut h = DefaultHasher::new();
@@ -703,7 +682,6 @@ fn state_hash(app: &PhotocraftApp, input: Option<u64>) -> u64 {
     let ui = &app.ui;
     (&ui.recent_files, &ui.workspace, ui.palette_open, ui.transform.is_some(), ui.text_edit.is_some(), ui.dialogs.len()).hash(&mut h);
     serde_json::to_string(&(&ui.panels, &ui.extras, &ui.view, ui.theme, ui.tool)).unwrap_or_default().hash(&mut h);
-    s.prefs().interface.language.hash(&mut h);
     h.finish()
 }
 
@@ -722,7 +700,7 @@ mod tests {
     }
 
     fn layout(doc: bool) -> Layout {
-        photocraft_layout(&crate::menus::menu_items(&app(doc)), Lang::EN, "auto")
+        photocraft_layout(&crate::menus::menu_items(&app(doc)), Lang::EN)
     }
 
     fn ids(nodes: &[Node]) -> Vec<String> {
@@ -744,21 +722,7 @@ mod tests {
         assert_eq!((app.title.as_str(), app.role), ("PhotoCraft", MenuRole::App));
         assert_eq!(
             ids(&app.children),
-            [
-                "help.about",
-                "---",
-                "[Settings]",
-                "[Language]",
-                "[Appearance]",
-                "---",
-                "<Services>",
-                "---",
-                HIDE,
-                "<HideOthers>",
-                "<ShowAll>",
-                "---",
-                "file.exit"
-            ]
+            ["help.about", "---", "[Settings]", "[Language]", "[Appearance]", "---", "<Services>", "---", HIDE, "<HideOthers>", "<ShowAll>", "---", "file.exit"]
         );
         let quit = l.bar.find("file.exit").unwrap();
         assert_eq!((quit.label.as_str(), quit.shortcut.as_deref()), ("Quit PhotoCraft", Some("Cmd+Q")));
@@ -799,7 +763,7 @@ mod tests {
     fn themes_move_to_the_app_menus_appearance() {
         let mut a = app(false);
         a.ui.theme = crate::theme::ThemeKind::Classic;
-        let l = photocraft_layout(&crate::menus::menu_items(&a), Lang::EN, "auto");
+        let l = photocraft_layout(&crate::menus::menu_items(&a), Lang::EN);
         let app_menu = l.bar.menu(MenuRole::App).unwrap();
         let Some(Node::Submenu { children, .. }) = app_menu.children.iter().find(|n| matches!(n, Node::Submenu { label, .. } if label == "Appearance")) else {
             panic!("an Appearance submenu");
@@ -812,30 +776,6 @@ mod tests {
         assert_eq!(l.bar.find("window.theme.toggle").unwrap().label, "Next Theme");
         let window = ids(&l.bar.menu(MenuRole::Window).unwrap().children);
         assert!(!window.iter().any(|id| id.starts_with("window.theme.") || id == "[Theme]"), "{window:?}");
-    }
-
-    /// Language follows Settings in the app menu: Auto and every UI language in its own name,
-    /// the preference checked; choosing one sets `interface.language`.
-    #[test]
-    fn the_app_menu_switches_the_ui_language() {
-        let l = photocraft_layout(&crate::menus::menu_items(&app(false)), Lang::EN, "ja");
-        let app_menu = l.bar.menu(MenuRole::App).unwrap();
-        let Some(Node::Submenu { children, .. }) = app_menu.children.iter().find(|n| matches!(n, Node::Submenu { label, .. } if label == "Language")) else {
-            panic!("a Language submenu");
-        };
-        assert_eq!(children.iter().filter(|n| matches!(n, Node::Item(_))).count(), Lang::all().count() + 1);
-        assert_eq!(l.bar.find("app.language.ja").map(|it| (it.label.as_str(), it.checked)), Some(("日本語", Some(true))));
-        assert_eq!(l.bar.find("app.language.auto").and_then(|it| it.checked), Some(false));
-        // Native names stay native in another UI language.
-        let de = photocraft_layout(&crate::menus::menu_items(&app(false)), Lang::from_pref("de"), "de");
-        assert_eq!(de.bar.find("app.language.ja").map(|it| it.label.as_str()), Some("日本語"));
-        let mut a = app(false);
-        let ctx = egui::Context::default();
-        crate::menus::invoke(&mut a, &ctx, "app.language.fr", json!({})).unwrap();
-        assert_eq!(a.session.prefs().interface.language, "fr");
-        crate::menus::invoke(&mut a, &ctx, "app.language.auto", json!({})).unwrap();
-        assert_eq!(a.session.prefs().interface.language, "auto");
-        assert!(crate::menus::invoke(&mut a, &ctx, "app.language.xx-nope", json!({})).is_err(), "an unknown code is an error");
     }
 
     /// The menus show the shortcut that runs each command (Undo ⌘Z, Copy ⌘C were blank).

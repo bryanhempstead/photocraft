@@ -373,16 +373,6 @@ mod tests {
     }
 
     #[test]
-    fn new_document_depth_labels_and_tooltips_are_translated() {
-        for lang in crate::i18n::Lang::all().filter(|lang| lang.code() != "en") {
-            for (_, label, tooltip) in DEPTH_OPTIONS {
-                assert_ne!(crate::i18n::tr(lang, label), *label, "{}: {label}", lang.code());
-                assert_ne!(crate::i18n::tr(lang, tooltip), *tooltip, "{}: {tooltip}", lang.code());
-            }
-        }
-    }
-
-    #[test]
     fn clipboard_preset_comes_first_and_is_selected() {
         // Nothing on the clipboard: the dialog opens as before.
         let mut app = crate::PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());

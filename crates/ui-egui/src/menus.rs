@@ -5,6 +5,9 @@ use serde_json::{Value, json};
 use crate::PhotocraftApp;
 use crate::state::DialogKind;
 
+/// What a request to change the UI language gets back.
+pub const ENGLISH_ONLY: &str = "PhotoCraft is English only: the interface language can't be changed";
+
 /// Top-level menus in Photoshop order.
 pub const TOP_MENUS: [&str; 10] = ["File", "Edit", "Image", "Layer", "Type", "Select", "Filter", "View", "Window", "Help"];
 
@@ -295,14 +298,9 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
             app.set_theme(ctx, k);
             Ok(Value::Null)
         }
-        // The macOS app menu's Language (`native_menu::language_node`).
-        i if i.starts_with(crate::native_menu::LANGUAGE_PREFIX) => {
-            let code = &i[crate::native_menu::LANGUAGE_PREFIX.len()..];
-            if code != "auto" && !crate::i18n::Lang::all().any(|l| l.code() == code) {
-                return Err(format!("unknown UI language `{code}`"));
-            }
-            app.run("prefs.set", json!({"values": {"interface.language": code}}))
-        }
+        // The app menu's Language items, from scripts written before PhotoCraft went English only.
+        "app.language.en" => Ok(json!("en")),
+        i if i.starts_with("app.language.") => Err(ENGLISH_ONLY.into()),
         "edit.search" => {
             app.ui.palette_open = !app.ui.palette_open;
             Ok(Value::Null)
@@ -1291,18 +1289,6 @@ mod tests {
         assert!(ids("zzzzqqq").is_empty());
     }
 
-    /// In another UI language both the translated and the English names match.
-    #[test]
-    fn help_search_matches_the_ui_language_and_english() {
-        let app = PhotocraftApp::new(photocraft_engine::Session::new(), crate::Services::default());
-        let items = menu_items(&app);
-        let Some(fr) = crate::i18n::Lang::from_code("fr") else { return };
-        let ids = |q: &str| search_items(&items, q, fr).iter().map(|i| i.id.clone()).collect::<Vec<_>>();
-        assert!(!ids("calque").is_empty(), "French menu name");
-        assert!(ids("distort").contains(&"edit.transform.distort".to_string()), "English still matches");
-        assert!(ids("zzzzqqq").is_empty());
-    }
-
     #[test]
     fn dropdown_items_have_room() {
         use egui_kittest::{Harness, kittest::Queryable};
@@ -1514,9 +1500,6 @@ mod quick_export_label_tests {
             assert_eq!(quick.len(), 1, "the catalogue and UI command must not create duplicate items");
             let shown_format = if cfg!(target_arch = "wasm32") { "PNG" } else { expected };
             assert_eq!(quick[0].label, format!("Quick Export as {shown_format}"));
-            let id = crate::i18n::Lang::from_code("id").unwrap();
-            let localized = translated_menu_label(id, quick[0]);
-            assert_eq!(localized, format!("Ekspor Cepat ke {shown_format}"));
             let layer = items.iter().find(|i| i.id == "layer.quickExportAsPng").unwrap();
             assert_eq!(layer.label, "Quick Export as PNG", "layer export always creates PNG");
         }

@@ -206,10 +206,6 @@ pub struct Interface {
     /// Document border in standard screen mode.
     pub canvas_border: CanvasBorder,
     pub ui_scale: UiScale,
-    /// UI language: `auto` (follow the system) or a language code such as `en`, `ja`. The list of
-    /// languages belongs to the shell (`ui-egui` i18n); an unknown code falls back to `auto`.
-    /// Command ids and the control protocol stay English.
-    pub language: String,
     pub ui_font_size: UiFontSize,
     pub show_channels_in_color: bool,
     pub dynamic_color_sliders: bool,
@@ -229,7 +225,6 @@ impl Default for Interface {
             canvas_custom_color: "#282828".into(),
             canvas_border: CanvasBorder::DropShadow,
             ui_scale: UiScale::Auto,
-            language: "auto".into(),
             ui_font_size: UiFontSize::Small,
             show_channels_in_color: false,
             dynamic_color_sliders: true,
@@ -1024,10 +1019,7 @@ fn check_value(path: &str, v: &Value) -> std::result::Result<(), String> {
         }
     }
     if path == "interface.language" {
-        let ok = v.as_str().is_some_and(|s| !s.is_empty() && s.len() <= 16 && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
-        if !ok {
-            return Err("`interface.language` must be `auto` or a language code such as `en` or `ja`".into());
-        }
+        return Err("PhotoCraft is English only: `interface.language` can't be set".into());
     }
     if let Some((lo, hi)) = range(path) {
         let x = v.as_f64().ok_or_else(|| format!("`{path}` must be a number"))?;
