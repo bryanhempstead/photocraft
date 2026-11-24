@@ -212,7 +212,7 @@ fn read_pattern(r: &mut Rd) -> Result<PsdPattern> {
     }
     let nc = mode_channels(mode);
     if planes.len() < nc {
-        return Err(PsdError::invalid("pattern has fewer channels than its colour mode"));
+        return Err(PsdError::invalid("pattern has fewer channels than its color mode"));
     }
     let alpha = (planes.len() > nc).then(|| planes.remove(nc));
     planes.truncate(nc);

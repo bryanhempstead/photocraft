@@ -73,7 +73,7 @@ fn gif_and_png8_keep_transparency_and_palette() {
     let mut colors: Vec<Vec<u8>> = (0..64 * 48).map(|i| img.data()[i * 4..i * 4 + 4].to_vec()).filter(|p| p[3] > 0).collect();
     colors.sort();
     colors.dedup();
-    assert!(colors.len() <= 7, "8 colours including the transparent one, got {}", colors.len());
+    assert!(colors.len() <= 7, "8 colors including the transparent one, got {}", colors.len());
     // Transparency off: everything over the matte.
     let png8 = format!("{dir}/a.png");
     s.execute("file.export.saveForWebLegacy", json!({"format": "png8", "transparency": false, "matte": "#00ff00", "path": png8})).unwrap();

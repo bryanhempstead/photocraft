@@ -399,7 +399,7 @@ fn merge(mut a: Value, b: Value) -> Value {
 }
 
 fn cms_err(e: photocraft_cms::CmsError) -> EngineError {
-    EngineError::Other(format!("colour management: {e}"))
+    EngineError::Other(format!("color management: {e}"))
 }
 
 // ------------------------------------------------------------------ profiles
@@ -1105,7 +1105,7 @@ mod tests {
         assert_eq!(document_profile(doc(&s)).description, "Display P3");
         let px = doc(&s).layers[1].surface().unwrap().pixel(8, 8);
         assert_eq!(px, vec![1.0, 0.0, 0.0, 1.0], "assign does not change pixels");
-        assert!(s.execute("edit.assignProfile", json!({"profile": "coated-cmyk"})).is_err(), "wrong colour space");
+        assert!(s.execute("edit.assignProfile", json!({"profile": "coated-cmyk"})).is_err(), "wrong color space");
         s.execute("edit.convertToProfile", json!({"profile": "srgb", "intent": "relative"})).unwrap();
         let px = doc(&s).layers[1].surface().unwrap().pixel(8, 8);
         assert!(px[0] > 0.99 && px[1] < 0.01, "P3 red clips to sRGB red: {px:?}");

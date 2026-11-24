@@ -133,7 +133,7 @@ fn color_range(s: &mut Session, p: &Value) -> Result<Value> {
             let mut samples = eyedropper_samples(p, "points", area, &px, &bad)?;
             let minus = eyedropper_samples(p, "subtractPoints", area, &px, &bad)?;
             if let Some(cs) = p.get("colors") {
-                let cs = cs.as_array().ok_or_else(|| bad("`colors` must be a list of colours".into()))?;
+                let cs = cs.as_array().ok_or_else(|| bad("`colors` must be a list of colors".into()))?;
                 for c in cs {
                     samples.push(sel::RangeSample { color: parse_color(&json!({ "color": c })), at: None });
                 }

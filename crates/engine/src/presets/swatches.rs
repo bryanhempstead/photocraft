@@ -269,7 +269,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Import Swatches…",
             menu: &[],
             shortcut: None,
-            params: r##"{"path":".aco or Swatches.psp"?,"data":base64?,"includeStock":bool=true (false skips Photoshop's stock colours)} → {imported:[names], count, skipped}"##,
+            params: r##"{"path":".aco or Swatches.psp"?,"data":base64?,"includeStock":bool=true (false skips Photoshop's stock colors)} → {imported:[names], count, skipped}"##,
             enabled: always,
             journal: false,
             run: import,

@@ -350,7 +350,7 @@ fn opaque_front_hides_back() {
     let bytes = gen_deep(4, 4, &RGBAZ, 0, None, &counts, &sample);
     let px = rgba_flat(&bytes);
     let (r, g, b, a) = (px[4], px[5], px[6], px[7]);
-    assert!((r - 1.0).abs() < 1e-6 && (g - 1.0).abs() < 1e-6 && (b - 0.0).abs() < 1e-6, "colour ({r},{g},{b})");
+    assert!((r - 1.0).abs() < 1e-6 && (g - 1.0).abs() < 1e-6 && (b - 0.0).abs() < 1e-6, "color ({r},{g},{b})");
     assert!((a - 1.0).abs() < 1e-6, "alpha {a}");
 }
 

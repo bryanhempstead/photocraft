@@ -275,7 +275,7 @@ pub fn build_palette(px: &[[f32; 4]], kind: PaletteKind, colors: usize, forced: 
     let computed: Vec<Rgb8> = match kind {
         PaletteKind::Exact => {
             if hist.len() > 256 {
-                return Err(format!("the image has {} colours; Exact needs 256 or fewer", hist.len()));
+                return Err(format!("the image has {} colors; Exact needs 256 or fewer", hist.len()));
             }
             hist.iter().map(|h| h.0).collect()
         }

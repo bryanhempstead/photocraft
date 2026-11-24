@@ -255,7 +255,7 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
             let id = mn.as_ref().and_then(|m| t.tag_uint(m, CANON_MODEL_ID));
             let known = GREEN_FIRST_MODELS.iter().any(|(m, _)| Some(*m) == id);
             if !known {
-                warnings.push("CR2 colour filter phase could not be measured; assumed red/green in the first row".to_string());
+                warnings.push("CR2 color filter phase could not be measured; assumed red/green in the first row".to_string());
             }
             usize::from(known)
         }

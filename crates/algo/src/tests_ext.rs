@@ -332,7 +332,7 @@ fn pointillize_shows_canvas() {
     let out = run(&s, &FilterParams::Pointillize { cell_size: 10.0, seed: 3, background: [1.0, 0.0, 0.0, 1.0] });
     let v = out.read_region(R);
     assert!(v.as_chunks::<4>().0.iter().any(|p| p[0] > 0.99 && p[2] < 0.01), "canvas visible between dots");
-    assert!(v.as_chunks::<4>().0.iter().any(|p| p[2] > 0.9), "dots take the image colour");
+    assert!(v.as_chunks::<4>().0.iter().any(|p| p[2] > 0.9), "dots take the image color");
 }
 
 #[test]

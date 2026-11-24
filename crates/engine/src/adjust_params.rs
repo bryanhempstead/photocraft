@@ -533,7 +533,7 @@ fn levels_obj(c: &LevelsChannel) -> Value {
 
 /// `[[location 0..1, colour], …]` (colour as for `color`), sorted by location.
 fn gradient_stops(cmd: &str, v: &Value) -> Result<Vec<(f32, [f32; 3])>> {
-    let err = || bad(cmd, "`stops` must be an array of 2..=64 [location 0..1, colour] pairs");
+    let err = || bad(cmd, "`stops` must be an array of 2..=64 [location 0..1, color] pairs");
     let a = v.as_array().filter(|a| (2..=64).contains(&a.len())).ok_or_else(err)?;
     let mut out = Vec::with_capacity(a.len());
     for s in a {

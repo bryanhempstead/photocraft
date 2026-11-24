@@ -455,11 +455,11 @@ mod tests {
             v.sort_by(f64::total_cmp);
             println!("{label:<48} median {:>8.1} ms  min {:>8.1} ms", v[2], v[0]);
         };
-        time(&mut s, "colour, no selection", json!({}));
-        time(&mut s, "colour, preserve transparency", json!({"preserveTransparency": true}));
-        time(&mut s, "colour 50% multiply", json!({"opacity": 50, "mode": "multiply"}));
+        time(&mut s, "color, no selection", json!({}));
+        time(&mut s, "color, preserve transparency", json!({"preserveTransparency": true}));
+        time(&mut s, "color 50% multiply", json!({"opacity": 50, "mode": "multiply"}));
         s.execute("select.rect", json!({"x": 100, "y": 100, "width": 5000, "height": 3000})).unwrap();
-        time(&mut s, "colour, 15 MP rectangle selection", json!({}));
+        time(&mut s, "color, 15 MP rectangle selection", json!({}));
         s.execute("select.deselect", json!({})).unwrap();
         // The old per-pixel f32 path, for comparison.
         let st = s.active().unwrap();

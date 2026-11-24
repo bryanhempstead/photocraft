@@ -282,7 +282,7 @@ mod tests {
         for i in 0..3 {
             assert!((inside[i] - expect[i]).abs() < 0.01, "{inside:?} vs {expect:?}");
         }
-        assert!((0..3).any(|i| (inside[i] - default[i]).abs() > 0.02), "the document profile changes the colour: {inside:?} {default:?}");
+        assert!((0..3).any(|i| (inside[i] - default[i]).abs() > 0.02), "the document profile changes the color: {inside:?} {default:?}");
         // Restored afterwards (and nested scopes restore the outer one).
         assert!(active_cmyk_space().is_none());
         assert_eq!(cmyk_to_rgb(ink), default);

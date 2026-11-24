@@ -348,7 +348,7 @@ fn color_dynamics_ranges() {
         BrushSettings { size: 10.0, spacing: 3.0, color_dynamics: ColorDynamics { enabled: true, fg_bg: Dynamic::jitter(1.0), ..Default::default() }, ..base };
     let s = paint(&b, &line(10.0, 310.0, 20.0), 330, 40);
     let colours: Vec<[f32; 4]> = (0..11).map(|i| s.rgba(10 + i * 30, 20)).collect();
-    assert!(colours.iter().any(|c| c[2] > 0.6) && colours.iter().any(|c| c[0] > 0.6), "{colours:?}");
+    assert!(colours.iter().any(|c| c[2] > 0.6) && colours.iter().any(|c| c[0] > 0.6), "{colors:?}");
 }
 
 #[test]

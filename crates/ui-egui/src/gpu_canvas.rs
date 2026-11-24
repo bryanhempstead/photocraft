@@ -1805,8 +1805,8 @@ fn fs_tile(in: VOut) -> @location(0) vec4<f32> {
         col = vec4(v * col.a, col.a);
     }
     if (view.d.z > 0.5 && col.a > 0.0) {
-        // Colour management, Proof Colors, Gamut Warning: the document's display LUT (alpha flags
-        // out-of-gamut colours).
+        // Color management, Proof Colors, Gamut Warning: the document's display LUT (alpha flags
+        // out-of-gamut colors).
         let n = f32(textureDimensions(lut).x);
         let c = clamp(col.rgb / col.a, vec3(0.0), vec3(1.0));
         let l = textureSampleLevel(lut, samp, (c * (n - 1.0) + 0.5) / n, 0.0);

@@ -292,7 +292,7 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
             ui.painter().rect_filled(cur, 0.0, c32(orig));
             ui.painter().rect_stroke(sw, 0.0, Stroke::new(1.0, t.field_border), StrokeKind::Outside);
             let click_cur = ui.interact(cur, ui.id().with("cp-current"), Sense::click());
-            if click_cur.on_hover_text(tl!("Click to restore the current colour")).clicked() {
+            if click_cur.on_hover_text(tl!("Click to restore the current color")).clicked() {
                 set_rgb(f, orig, Keep::Nothing);
             }
             ui.label(egui::RichText::new(tl!("current")).size(11.0).color(t.text_dim));
@@ -549,7 +549,7 @@ mod tests {
         assert_eq!(top(&app), Some(id));
         sample_at(&mut app, 25.5, 5.5);
         assert_eq!(dialog_color(&app, id), "#00ff00");
-        assert_eq!(app.ui.dialog_mut(id).unwrap().fields["__orig"], json!("#000000"), "the current colour stays");
+        assert_eq!(app.ui.dialog_mut(id).unwrap().fields["__orig"], json!("#000000"), "the current color stays");
         // Off the image or over transparency nothing changes.
         for (x, y) in [(35.0, 5.0), (-3.0, 5.0), (5.0, 20.0), (1e12, -1e12), (f64::NAN, f64::INFINITY)] {
             sample_at(&mut app, x, y);

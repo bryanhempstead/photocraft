@@ -186,7 +186,7 @@ pub fn document_to_image(doc: &Document, warnings: &mut Vec<String>) -> Result<I
         if fmt.mode == ColorMode::Cmyk || fmt.mode == ColorMode::Lab {
             // The compositor renders CMYK/Lab documents in sRGB (CMYK through the built-in
             // profile), so the file is tagged sRGB.
-            warnings.push(format!("{:?} composite written as sRGB RGB (colour-managed conversion)", fmt.mode));
+            warnings.push(format!("{:?} composite written as sRGB RGB (color-managed conversion)", fmt.mode));
             icc = Some(photocraft_cms::Builtin::Srgb.profile().to_bytes().to_vec());
         }
         let cs = csample(fmt.sample);
@@ -299,7 +299,7 @@ pub fn export_flat(doc: &Document, format: Format, opts: &ExportOptions) -> Resu
     }
     if img.layout().is_cmyk() && !format.caps().layouts.iter().any(|l| l.is_cmyk()) {
         img = cmyk_image_to_srgb(&img)?;
-        warnings.push(format!("CMYK converted to sRGB for {format:?} through the document's colour profile"));
+        warnings.push(format!("CMYK converted to sRGB for {format:?} through the document's color profile"));
     }
     if matches!(format, Format::OpenExr | Format::Hdr) {
         // OpenEXR and Radiance HDR store linear light (read back as linear sRGB, see [`import_flat`]).
@@ -311,7 +311,7 @@ pub fn export_flat(doc: &Document, format: Format, opts: &ExportOptions) -> Resu
         // write values that only mean something under the dropped profile.
         if let Some(srgb) = convert_rgb(&img, Builtin::Srgb.profile(), Intent::Perceptual, true, img.sample_type())? {
             img = srgb;
-            warnings.push(format!("colours converted to sRGB; {format:?} can't embed the document's colour profile"));
+            warnings.push(format!("colors converted to sRGB; {format:?} can't embed the document's color profile"));
         }
     }
     for w in codecs::fidelity_warnings_with(&img, format, &opts.encode) {
@@ -417,7 +417,7 @@ fn export_mode_specific(doc: &Document, format: Format, opts: &ExportOptions) ->
                 Ok(())
             });
             let bytes = codecs::encode_png_indexed(doc.size.width, doc.size.height, &idx, &table.colors, table.transparent)?;
-            Ok(Some(ExportResult { bytes, warnings: vec![format!("written as an 8-bit palette PNG ({} colours)", table.colors.len())] }))
+            Ok(Some(ExportResult { bytes, warnings: vec![format!("written as an 8-bit palette PNG ({} colors)", table.colors.len())] }))
         }
         ColorMode::Duotone => {
             let Some(d) = doc.duotone.as_ref() else { return Ok(None) };

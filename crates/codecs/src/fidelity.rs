@@ -82,10 +82,10 @@ impl fmt::Display for FidelityWarning {
             AlphaDiscarded => write!(f, "alpha will be discarded"),
             AlphaBinarized => write!(f, "alpha will be reduced to on/off transparency"),
             CmykConverted { to } => {
-                write!(f, "CMYK will be converted to {to:?} (not colour-managed)")
+                write!(f, "CMYK will be converted to {to:?} (not color-managed)")
             }
-            ColorToGray => write!(f, "colour will be converted to grayscale"),
-            PaletteQuantized => write!(f, "colours will be quantized to a 256-colour palette"),
+            ColorToGray => write!(f, "color will be converted to grayscale"),
+            PaletteQuantized => write!(f, "colors will be quantized to a 256-color palette"),
             LossyCompression => write!(f, "lossy compression"),
             IccDropped => write!(f, "ICC profile not supported; it will be dropped"),
             ExifDropped => write!(f, "EXIF not supported; it will be dropped"),

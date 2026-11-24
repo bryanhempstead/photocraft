@@ -1780,7 +1780,7 @@ mod tests {
         fx.put(&so);
         let (_, little) = block_rt(*b"lrFX", fx);
         assert!(little.windows(8).any(|w| w == b"MIB8wdsd"), "effect keys reversed");
-        assert!(little.windows(2).any(|w| w == [0x34, 0x12]), "colour component swapped");
+        assert!(little.windows(2).any(|w| w == [0x34, 0x12]), "color component swapped");
 
         // levl: version + 29 records + the Lvls extension.
         let mut lv = Vec::new();

@@ -1062,7 +1062,7 @@ mod tests {
             assert!(h.ctx.content_rect().contains_rect(r), "step {i}: {r:?} runs off the window");
         }
         press(&mut h, start, false);
-        assert_ne!(fill(&h), before, "the drag picked a colour");
+        assert_ne!(fill(&h), before, "the drag picked a color");
     }
 }
 

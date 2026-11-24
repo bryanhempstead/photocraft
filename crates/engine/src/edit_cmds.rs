@@ -694,7 +694,7 @@ mod tests {
             s.execute(cmd, json!({})).unwrap();
             let d = &s.active().unwrap().doc;
             assert!(crate::extra_cmds::is_background(&d.layers[0]), "{cmd}: still the Background");
-            assert_eq!(px(&s, 0, 8, 8), vec![1.0, 0.0, 0.0, 1.0], "{cmd}: cut area is the background colour");
+            assert_eq!(px(&s, 0, 8, 8), vec![1.0, 0.0, 0.0, 1.0], "{cmd}: cut area is the background color");
             assert_eq!(px(&s, 0, 30, 20), vec![1.0, 1.0, 1.0, 1.0], "{cmd}: outside untouched");
         }
         // Layer via Cut still lifts the original pixels onto the new layer.

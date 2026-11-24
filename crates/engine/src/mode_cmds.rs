@@ -272,7 +272,7 @@ fn color_table(s: &mut Session, p: &Value) -> Result<Value> {
     if let Some(e) = p.get("entries").and_then(Value::as_object) {
         for (k, v) in e {
             let i: usize = k.parse().map_err(|_| bad(CMD, format!("entry index `{k}`")))?;
-            let c = parse_color(v).ok_or_else(|| bad(CMD, format!("entry {i}: bad colour")))?;
+            let c = parse_color(v).ok_or_else(|| bad(CMD, format!("entry {i}: bad color")))?;
             if i >= table.colors.len() {
                 return Err(bad(CMD, format!("entry {i} is past the table ({} entries)", table.colors.len())));
             }

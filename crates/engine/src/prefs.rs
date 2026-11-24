@@ -1028,7 +1028,7 @@ fn check_value(path: &str, v: &Value) -> std::result::Result<(), String> {
         }
     }
     if is_color(path) && v.as_str().and_then(parse_hex).is_none() {
-        return Err(format!("`{path}` must be a #rrggbb colour"));
+        return Err(format!("`{path}` must be a #rrggbb color"));
     }
     if let Some(sc) = path.strip_prefix("shortcuts.") {
         let s = v.as_str().ok_or_else(|| format!("shortcut for `{sc}` must be a string"))?;
@@ -1520,7 +1520,7 @@ fn menus(s: &mut Session, p: &Value) -> Result<Value> {
     if let Some(m) = p.get("color").and_then(Value::as_object) {
         for v in m.values() {
             if let Some(c) = v.as_str().filter(|c| !COLORS.contains(c)) {
-                return Err(bad("edit.menus", format!("unknown colour `{c}` ({})", COLORS.join("|"))));
+                return Err(bad("edit.menus", format!("unknown color `{c}` ({})", COLORS.join("|"))));
             }
         }
     }

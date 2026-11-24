@@ -86,7 +86,7 @@ fn cfa(t: &Tiff, ifd: &Ifd, active: &Rect) -> Result<Cfa> {
         v => v,
     };
     if planes != [0, 1, 2] {
-        return Err(RawError::unsupported(format!("CFA plane colours {planes:?} (only red, green, blue)")));
+        return Err(RawError::unsupported(format!("CFA plane colors {planes:?} (only red, green, blue)")));
     }
     if t.tag_uint(ifd, tag::CFA_LAYOUT).unwrap_or(1) != 1 {
         return Err(RawError::unsupported("non-rectangular CFA layout"));
@@ -95,7 +95,7 @@ fn cfa(t: &Tiff, ifd: &Ifd, active: &Rect) -> Result<Cfa> {
         .into_iter()
         .map(|code| u8::try_from(code).ok().filter(|c| *c <= 2))
         .collect::<Option<Vec<u8>>>()
-        .ok_or_else(|| RawError::unsupported("CFA colours other than red, green and blue"))?;
+        .ok_or_else(|| RawError::unsupported("CFA colors other than red, green and blue"))?;
     let c = Cfa { width: cols, height: rows, colors, origin_x: active.x, origin_y: active.y };
     if !c.is_bayer() {
         return Err(RawError::unsupported(format!("{rows}x{cols} non-Bayer CFA (e.g. X-Trans)")));
@@ -226,7 +226,7 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
 
     let color = color_info(t, &ifd0);
     if color.calibrations.is_empty() {
-        warnings.push("the DNG has no colour matrix; colours are approximate".to_string());
+        warnings.push("the DNG has no color matrix; colors are approximate".to_string());
     }
     let baseline_exposure = t.tag_floats(&ifd0, tag::BASELINE_EXPOSURE).first().copied().unwrap_or(0.0)
         + t.tag_floats(&raw, tag::BASELINE_EXPOSURE_OFFSET).first().copied().unwrap_or(0.0);

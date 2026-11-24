@@ -323,7 +323,7 @@ fn ref_planes(doc: &Document, layer: Option<LayerId>, active: Option<LayerId>, r
             let (px, n) = native_pixels(doc, layer)?;
             let planes: Vec<Vec<f32>> = (0..colors).map(|c| px.chunks_exact(n).map(|p| p[c]).collect()).collect();
             match r {
-                ChanRef::Color(k) => vec![planes.get(k).cloned().ok_or_else(|| EngineError::Other(format!("no colour channel {k}")))?],
+                ChanRef::Color(k) => vec![planes.get(k).cloned().ok_or_else(|| EngineError::Other(format!("no color channel {k}")))?],
                 _ => planes,
             }
         }
@@ -1080,7 +1080,7 @@ fn parse_target(s: &Session, p: &Value, cmd: &str) -> Result<ChannelTarget> {
         Some(ChanRef::Composite) => Ok(ChannelTarget::Composite),
         Some(ChanRef::Color(k)) if k < color_count(doc) && color_count(doc) > 1 => Ok(ChannelTarget::Color(k)),
         Some(ChanRef::Alpha(i)) if i < doc.channels.len() => Ok(ChannelTarget::Alpha(i)),
-        _ => Err(bad(cmd, "`channel` must be \"composite\", a colour channel name or an alpha channel")),
+        _ => Err(bad(cmd, "`channel` must be \"composite\", a color channel name or an alpha channel")),
     }
 }
 

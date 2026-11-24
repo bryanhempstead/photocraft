@@ -155,12 +155,12 @@ impl GradientPreset {
                 "foreground" => StopColor::Foreground,
                 "background" => StopColor::Background,
                 h if h.trim_start_matches('#').len() == 6 && h.trim_start_matches('#').chars().all(|c| c.is_ascii_hexdigit()) => StopColor::Rgb(hex(h)),
-                o => return Err(bad(cmd, format!("bad stop colour `{o}`"))),
+                o => return Err(bad(cmd, format!("bad stop color `{o}`"))),
             };
             stops.push((t.clamp(0.0, 1.0), c));
         }
         if stops.len() < 2 {
-            return Err(bad(cmd, "a gradient needs at least 2 colour stops"));
+            return Err(bad(cmd, "a gradient needs at least 2 color stops"));
         }
         stops.sort_by(|a, b| a.0.total_cmp(&b.0));
         GradientPreset { name: name.into(), stops, opacity: Vec::new() }.with_transparency(p, cmd)
@@ -506,7 +506,7 @@ pub fn specs() -> Vec<CommandSpec> {
             menu: &[],
             shortcut: None,
             params: leak(format!(
-                r##"{{"preset":name|{stops},"group":name?,"applyToLayer":bool=true (also recolours a selected Gradient Fill layer)}} → {{current,layer?}}. The Gradient tool paints with it."##
+                r##"{{"preset":name|{stops},"group":name?,"applyToLayer":bool=true (also recolors a selected Gradient Fill layer)}} → {{current,layer?}}. The Gradient tool paints with it."##
             )),
             enabled: always,
             run: select,

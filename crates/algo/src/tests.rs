@@ -444,7 +444,7 @@ fn layer_filters_repeat_the_canvas_edge() {
         for (x, y) in [(0, 0), (39, 0), (0, 29), (39, 29), (20, 0)] {
             let px = clamped.pixel(x, y);
             assert!((px[3] - 1.0).abs() < 1e-3, "{depth:?}: alpha faded at ({x},{y}): {}", px[3]);
-            assert!((px[1] - 0.6).abs() < 2e-3, "{depth:?}: colour changed at ({x},{y})");
+            assert!((px[1] - 0.6).abs() < 2e-3, "{depth:?}: color changed at ({x},{y})");
         }
         let faded = apply(&s, &p, area, canvas, None);
         assert!(faded.pixel(0, 0)[3] < 0.9, "{depth:?}: unclamped path should read transparency");

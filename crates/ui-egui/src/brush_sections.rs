@@ -601,7 +601,7 @@ pub fn section_body(ui: &mut egui::Ui, b: &mut BrushSettings, i: usize, presets:
         }
         7 => pose(ui, b),
         8 => note(ui, "Adds extra randomness to the soft edges of the brush tip. No options: turn it on in the list."),
-        9 => note(ui, "Builds up paint along the edges of the stroke for a watercolour look. No options: turn it on in the list."),
+        9 => note(ui, "Builds up paint along the edges of the stroke for a watercolor look. No options: turn it on in the list."),
         10 => {
             note(ui, tl!("Airbrush: keeps depositing paint while the pointer rests."));
             ui.add_space(6.0);
